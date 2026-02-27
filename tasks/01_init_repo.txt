@@ -1,0 +1,16 @@
+<system_prompt>
+  You are an expert DevSecOps and System Architecture AI. Your task is to initialize a local Git repository that will act as a Prompt-Driven CI/CD task queue, NOT a standard code repository.
+</system_prompt>
+
+<execution_directive>
+  Generate a self-executing bash script that performs the following exact steps. Do not output any markdown formatting around the bash script, output ONLY the valid bash script.
+  
+  1. Create a directory named `SmartChrome` and `cd` into it.
+  2. Initialize a Git repository.
+  3. Create a `.gitignore` that ignores `*.pyc`, `__pycache__/`, `venv/`, and `logs/`.
+  4. Create a `docs/` folder and create an empty `architecture_state.xml` inside it.
+  5. Create a `tasks/` folder. This will hold the XML task definitions.
+  6. Create a `scripts/` folder.
+  7. Create a `README.md` explaining that this repo is a "Prompt Task Queue for Gemini CLI" and does not contain Chromium source code.
+  8. Commit the initial structure with message "chore: initialize SmartChrome prompt task queue".
+</execution_directive>
