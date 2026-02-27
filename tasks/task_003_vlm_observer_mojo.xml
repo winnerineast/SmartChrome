@@ -1,0 +1,50 @@
+<smartchrome_task id="003" status="success">
+  <context>
+    We are building "SmartChrome", embedding a local Vision-Language Model (VLM) into Chromium. 
+    Current Phase: Implementing the IPC (Inter-Process Communication) bridge between the main Browser Process and our isolated VLM Utility Process.
+  </context>
+
+  <actions>
+    <action type="create_file" path="components/vlm_agent/public/mojom/vlm_agent.mojom">
+      <description>Define the Mojo interface for VLM communication.</description>
+      <content>
+module vlm_agent.mojom;
+
+import "mojo/public/mojom/base/big_buffer.mojom";
+
+// The core interface for communicating with the embedded VLM process.
+interface VLMObserver {
+  // Sends the current viewport and accessibility tree to the VLM.
+  // Returns a JSON string containing the VLM's decided action (e.g., click, scroll).
+  OnPageStateCaptured(
+      mojo_base.mojom.BigBuffer screenshot_rgba, 
+      string a11y_tree_json) => (string action_response);
+
+  // Used for the RLHF (Reinforcement Learning from Human Feedback) loop.
+  // Reports when a human intercepts and corrects a bad VLM action.
+  ReportHumanCorrection(
+      string state_id, 
+      string bad_action_json, 
+      string good_action_json);
+};
+      </content>
+    </action>
+
+    <action type="execute_command">
+      <description>Generate the C++ bindings and compile the component.</description>
+      <command>autoninja -C out/Default components/vlm_agent</command>
+    </action>
+
+    <action type="git_commit_and_push">
+      <description>Save the prompt and code state to the SmartChrome GitHub repository.</description>
+      <commit_message>feat(ipc): define VLMObserver mojo interface for SmartChrome</commit_message>
+    </action>
+  </actions>
+
+  <execution_log>
+    Build Directory: out/Default
+    Command: gn gen out/Default (Success)
+    Command: autoninja -C out/Default components/vlm_agent (Success)
+    Generated files: components/vlm_agent/public/mojom/vlm_agent.mojom.h, .cc
+  </execution_log>
+</smartchrome_task>
