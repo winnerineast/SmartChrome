@@ -1,0 +1,34 @@
+Task Context: Fix Stale Mojo Pipe in Renderer
+The Mojo pipe page_host_ remains "bound" but becomes "disconnected" after a page navigation (e.g., navigating to Wikipedia destroys the old Document's Browser-side receiver). We must check is_connected() and reset() the pipe before re-binding to ensure the ping actually reaches the Browser process.
+
+Phase 1: Project Management
+
+Save this prompt to ~/SmartChrome/tasks/task_010_7_mojo_stale_pipe_fix.txt
+
+Change directory to ~/SmartChrome
+
+Execute: git add tasks/task_010_7_mojo_stale_pipe_fix.txt
+
+Execute: git commit -m "fix: check is_connected and reset stale Mojo pipe in VLMSensor"
+
+Execute: git push
+
+Phase 2: Chromium C++ Refactor
+
+Change directory to ~/chromium/src.
+
+Patch components/vlm_agent/renderer/vlm_sensor.cc:
+
+Inside DoCaptureAndSend(), update the Mojo binding logic to check for disconnects:
+
+C++
+if (!page_host_.is_bound() || !page_host_.is_connected()) {
+    LOG(INFO) << "[VLM Trace] Step 1.1: Mojo unbound or disconnected! Resetting and requesting new pipe...";
+    page_host_.reset();
+    render_frame()->GetBrowserInterfaceBroker()->GetInterface(page_host_.BindNewPipeAndPassReceiver());
+}
+LOG(INFO) << "[VLM Trace] Step 1.5: Sending ping across Mojo pipe.";
+page_host_->OnA11yTreeUpdated("{}");
+Execute the build command: autoninja -C out/Default chrome
+
+Execution Directive: Execute Phase 1, then Phase 2. Autonomously replace the old if (!page_host_.is_bound()) block with the new logic. Report the final build exit code.
