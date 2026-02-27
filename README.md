@@ -17,3 +17,17 @@ This repo is a "Prompt Task Queue for Gemini CLI" and does not contain Chromium 
 - install and run Gemini CLI.
 - run the initial tasks to construct the github repo and relevant architecture document.
 - then run the tasks one by one in sequence in order to create this SmartChrome.
+
+## Quick Start (Testing the Telemetry Pipeline)
+
+1. **Start the Mock VLM Server:**
+   ```bash
+   cd backend
+   python3 mock_server.py
+   ```
+
+2. **Launch SmartChrome:**
+   Launch the custom-built Chrome with the accessibility flag enabled to ensure the telemetry pipeline can extract UI state without crashing:
+   ```bash
+   ~/chromium/src/out/Default/chrome --force-renderer-accessibility
+   ```

@@ -28,7 +28,10 @@
     Routes:
       - POST /vlm/act : Receives VLMPayload, saves image/JSON, returns action.
     Instructions to start:
-      cd ~/SmartChrome/backend
-      python3 mock_server.py
+      1. Start the server:
+         cd ~/SmartChrome/backend
+         python3 mock_server.py
+      2. Start Chrome (with accessibility enabled):
+         ~/chromium/src/out/Default/chrome --force-renderer-accessibility
   </execution_log>
 </smartchrome_task>
