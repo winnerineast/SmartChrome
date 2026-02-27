@@ -1,0 +1,40 @@
+Task Context: Hotfix for Blink AXObjectCache !IsDirty() Crash
+Our VLMSensor is crashing the renderer because it reads the Accessibility tree synchronously inside DidMeaningfulLayout while the AXObjectCache is still dirty. We need to refactor VLMSensor to use base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask to read the tree 500ms AFTER the layout event, allowing Blink to finish its lifecycle updates.
+
+Phase 1: Project Management
+
+Save this prompt to ~/SmartChrome/tasks/task_009_5_hotfix_dirty_cache.txt
+
+Change directory to ~/SmartChrome
+
+Execute: git add tasks/task_009_5_hotfix_dirty_cache.txt
+
+Execute: git commit -m "hotfix: use PostDelayedTask to prevent reading dirty AX cache during layout"
+
+Execute: git push
+
+Phase 2: Chromium C++ Hotfix
+
+Change directory to ~/chromium/src.
+
+Patch components/vlm_agent/renderer/vlm_sensor.h:
+
+Include "base/memory/weak_ptr.h".
+
+Move the adaptive polling and Mojo sending logic into a new private method: void DoCaptureAndSend();
+
+Add a WeakPtrFactory at the very bottom of the private section: base::WeakPtrFactory<VLMSensor> weak_factory_{this};
+
+Patch components/vlm_agent/renderer/vlm_sensor.cc:
+
+Include "base/task/single_thread_task_runner.h" and "base/location.h".
+
+In DidMeaningfulLayout, simplify the logic: If the cooldown has passed, update last_capture_time_ and immediately call base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(FROM_HERE, base::BindOnce(&VLMSensor::DoCaptureAndSend, weak_factory_.GetWeakPtr()), base::Milliseconds(500));
+
+Implement DoCaptureAndSend(): Inside this method, call CaptureA11yTreeWithCoordinates(). Then compare the new JSON with last_a11y_json_ to manage the adaptive cooldown (current_cooldown_) exactly as before, and if it changed, send it via page_host_->OnA11yTreeUpdated.
+
+CRITICAL: At the very beginning of DoCaptureAndSend(), add a safety check: if (!render_frame() || !render_frame()->GetWebFrame()) return; to prevent crashes if the frame was destroyed during the 500ms delay.
+
+Execute the build command: autoninja -C out/Default chrome
+
+Execution Directive: Execute Phase 1, then Phase 2. Ensure the logic is correctly moved out of DidMeaningfulLayout and into DoCaptureAndSend, executed via PostDelayedTask. Fix any C++ compile errors autonomously and report the final exit code.
