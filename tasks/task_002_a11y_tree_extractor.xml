@@ -1,0 +1,32 @@
+<smartchrome_task id="002" status="pending">
+  <target_repo>/home/nvidia/chromium/src</target_repo>
+  <build_command>autoninja -C out/Default components/vlm_agent</build_command>
+  
+  <prompt_payload>
+    <context>
+      Read docs/architecture_state.xml. We are implementing MOD_01_FRONTEND_ENGINE -> C_01_SENSOR.
+      Task 001 established the VLMObserver Mojo interface. Now, we need to extract the Accessibility (A11y) tree with bounding boxes from the Render process to prepare it for transmission over the Mojo pipe.
+    </context>
+
+    <requirements>
+      1. Create a C++ class \`VLMSensor\` that implements \`content::RenderFrameObserver\`.
+      2. Hook into a suitable lifecycle event (e.g., \`DidMeaningfulLayout\` or \`DidCommitProvisionalLoad\`).
+      3. Access the Blink accessibility tree (\`blink::WebAXObject\`) for the main frame.
+      4. Traverse the tree and extract actionable UI elements (buttons, links, text inputs, static text).
+      5. For each element, extract its exact viewport bounding box (x, y, width, height) and an assigned integer target_id.
+      6. Serialize this structured data into a lightweight JSON string.
+    </requirements>
+
+    <execution_directive>
+      Output the required C++ header and implementation files using the new file format block.
+      
+      ++++ components/vlm_agent/renderer/vlm_sensor.h
+      [Header code...]
+      ++++
+      
+      ++++ components/vlm_agent/renderer/vlm_sensor.cc
+      [Implementation code...]
+      ++++
+    </execution_directive>
+  </prompt_payload>
+</smartchrome_task>
