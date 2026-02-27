@@ -1,0 +1,44 @@
+Task Context: Wiring and Ignition
+We are building "SmartChrome", embedding a local VLM into Chromium. The Renderer sensor (VLMSensor) and Browser receiver (VLMPageHostImpl) are implemented but not yet hooked into the Chromium lifecycle. We must inject them into the respective Content Clients to fully activate the telemetry pipeline.
+
+Phase 1: Project Management
+
+Save this entire prompt text into a new file: ~/SmartChrome/tasks/task_007_wiring_and_ignition.txt
+
+Change directory to ~/SmartChrome
+
+Execute: git add tasks/task_007_wiring_and_ignition.txt
+
+Execute: git commit -m "task: hook VLMSensor into renderer lifecycle and VLMPageHost into browser interface broker"
+
+Execute: git push
+
+Phase 2: Chromium Execution
+
+Change directory to your Chromium source tree (~/chromium/src).
+
+Renderer Side Wiring: Update chrome/renderer/BUILD.gn. Add "//components/vlm_agent" to the deps of the renderer target.
+
+Renderer Side Injection: Patch chrome/renderer/chrome_content_renderer_client.cc.
+
+Add the include for "components/vlm_agent/renderer/vlm_sensor.h".
+
+Locate the method ChromeContentRendererClient::RenderFrameCreated(content::RenderFrame* render_frame).
+
+Inject the code new vlm_agent::VLMSensor(render_frame); inside this method to ensure the sensor is born with every new frame.
+
+Browser Side Wiring: Update chrome/browser/BUILD.gn. Add "//components/vlm_agent" to the deps of the browser target.
+
+Browser Side Injection: Patch chrome/browser/chrome_browser_interface_binders.cc.
+
+Add includes for "components/vlm_agent/browser/vlm_page_host_impl.h" and "components/vlm_agent/public/mojom/vlm_agent.mojom.h".
+
+Locate the function responsible for registering frame-level binders (typically named PopulateFrameBinders or similar, which takes a BinderMapWithContext pointer).
+
+Inject the registration: map->Add<vlm_agent::mojom::VLMPageHost>(base::BindRepeating(&vlm_agent::VLMPageHostImpl::BindReceiver));
+
+Final Link: Execute the build command for the entire browser: autoninja -C out/Default chrome
+
+Execution Directive:
+Execute Phase 1 first, then Phase 2.
+CRITICAL: The chrome_content_renderer_client.cc and chrome_browser_interface_binders.cc files are massive. Do not use simple search/replace if it risks breaking the AST. Use your semantic parsing capabilities to locate the exact functions and safely inject the lines. Fix any include conflicts or GN dependency errors autonomously. Report the final build exit code.
