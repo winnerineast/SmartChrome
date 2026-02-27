@@ -1,0 +1,12 @@
+<smartchrome_task status="pending">
+  <target_repo>/home/nvidia/SmartChrome</target_repo>
+  <prompt_payload>Update the README.md in the current directory. Find the text 'does not contain Chromium source code.' and replace it with 'does not contain Chromium source code. Runner test successful.' Use the following format for your response:
+<<<<
+README.md
+====
+does not contain Chromium source code.
+====
+does not contain Chromium source code. Runner test successful.
+>>>></prompt_payload>
+  <build_command>grep "Runner test successful" README.md</build_command>
+</smartchrome_task>
