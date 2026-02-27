@@ -1,0 +1,52 @@
+Task Context: Pivot to Native Browser AXTreeSnapshot
+Our custom renderer A11y walker crashed because Blink's AXObjectCache is constantly dirty. We will pivot to using Chromium's stable, native RequestAXTreeSnapshot API in the Browser process. The Renderer will now act only as a layout trigger ping. The Browser process will natively request the AXTree update, parse it to JSON, capture the screenshot, and dispatch the HTTP POST.
+
+Phase 1: Project Management
+
+Save this prompt to ~/SmartChrome/tasks/task_010_native_axtree_pivot.txt
+
+Change directory to ~/SmartChrome
+
+Execute: git add tasks/task_010_native_axtree_pivot.txt
+
+Execute: git commit -m "refactor: move A11y extraction to Browser process using RequestAXTreeSnapshot to avoid renderer !IsDirty crashes"
+
+Execute: git push
+
+Phase 2: Chromium C++ Refactor
+
+Change directory to your Chromium source tree (~/chromium/src).
+
+GN Build Update: In components/vlm_agent/BUILD.gn, ensure "//ui/accessibility" is in the deps of the browser target.
+
+Patch components/vlm_agent/renderer/vlm_sensor.cc and .h:
+
+Remove TraverseAXNode and CaptureA11yTreeWithCoordinates completely.
+
+In DoCaptureAndSend(), remove the JSON comparison logic. Just use the time-based cooldown. When fired, simply call: if (page_host_.is_bound()) page_host_->OnA11yTreeUpdated("{}"); to act as a lightweight ping.
+
+Patch components/vlm_agent/browser/vlm_page_host_impl.h:
+
+Add #include "ui/accessibility/ax_tree_update.h"
+
+Add a private method: void ProcessAXTree(const ui::AXTreeUpdate& update);
+
+Patch components/vlm_agent/browser/vlm_page_host_impl.cc:
+
+Add #include "ui/accessibility/ax_node_data.h", #include "base/json/json_writer.h", and #include "ui/accessibility/ax_mode.h"
+
+In OnA11yTreeUpdated (which now receives the dummy ping), check if render_frame_host() is active. If active, call: render_frame_host().RequestAXTreeSnapshot(base::BindOnce(&VLMPageHostImpl::ProcessAXTree, weak_ptr_factory_.GetWeakPtr()), ui::kAXModeComplete);
+
+Implement ProcessAXTree(const ui::AXTreeUpdate& update):
+a) Create a base::Value::List a11y_nodes;
+b) Iterate through update.nodes (each is a ui::AXNodeData).
+c) Build a dictionary for each node extracting: id, role (as int), bounds array from node.relative_bounds.bounds (x, y, width, height), and name via node.GetStringAttribute(ax::mojom::StringAttribute::kName).
+d) Serialize the list to a JSON string a11y_json_str.
+e) Trigger the screenshot capture: view->CopyFromSurface(gfx::Rect(), gfx::Size(), base::BindOnce(&VLMPageHostImpl::OnScreenshotCaptured, weak_ptr_factory_.GetWeakPtr(), a11y_json_str));
+
+The rest of OnScreenshotCaptured remains identical (it encodes the bitmap and POSTs the payload).
+
+Execute the build command: autoninja -C out/Default chrome
+
+Execution Directive:
+Execute Phase 1, then Phase 2. CRITICAL: The signature of RequestAXTreeSnapshot in RenderFrameHost might differ slightly across Chromium versions (e.g., whether it requires the ui::kAXModeComplete argument). Autonomously inspect content/public/browser/render_frame_host.h to supply the correct arguments if it fails to compile. Fix any C++ missing includes or GN dependency errors autonomously. Report the final exit code.
