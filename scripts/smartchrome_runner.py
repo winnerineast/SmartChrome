@@ -16,69 +16,60 @@ logging.basicConfig(
     ]
 )
 
+GEMINI_PATH = "/home/nvidia/.nvm/versions/node/v22.22.0/bin/gemini"
+
 def apply_patches(target_repo, ai_output):
     """
-    Parses the AI output for Search/Replace blocks and applies them to the files.
-    Format:
-    <<<<
-    [filename]
-    ====
-    [exact old code to find]
-    ====
-    [new code to replace it with]
-    >>>>
-    Note: The requirements didn't specify filename placement, but a patch needs a file.
-    Assuming the block contains: filename, separator, old code, separator, new code.
-    If the requirement strictly says <<<< [old] ==== [new] >>>>, it implies the AI prompt 
-    must have specified the file context. Let's assume the AI output includes file headers
-    or the runner handles one file at a time.
-    
-    Refined block format based on standard AI patching:
-    <<<<
-    FILE: [path/to/file]
-    OLD:
-    [code]
-    NEW:
-    [code]
-    >>>>
-    Since the prompt was specific: <<<< [old] ==== [new] >>>>, let's use a regex that handles it.
+    Parses the AI output for Search/Replace blocks (<<<<) OR New File blocks (++++)
+    and applies them to the files.
     """
-    # Regex to find <<<< [content] >>>>
-    blocks = re.findall(r'<<<<\n(.*?)\n>>>>', ai_output, re.DOTALL)
-    
-    for block in blocks:
+    # 1. Handle Search/Replace Blocks: <<<< [filename] ==== [old] ==== [new] >>>>
+    replace_blocks = re.findall(r'<<<<\n(.*?)\n>>>>', ai_output, re.DOTALL)
+    for block in replace_blocks:
         try:
-            # Split by ==== separator. Expecting: filename, old, new
             parts = block.split('\n====\n')
             if len(parts) != 3:
-                logging.error(f"Malformed patch block. Expected 3 sections, got {len(parts)}.")
+                logging.error(f"Malformed replace block. Expected 3 sections, got {len(parts)}.")
                 return False
             
             filename, old_code, new_code = parts[0].strip(), parts[1], parts[2]
             file_path = os.path.join(target_repo, filename)
             
             if not os.path.exists(file_path):
-                logging.error(f"File not found: {file_path}")
+                logging.error(f"File not found for replacement: {file_path}")
                 return False
             
             with open(file_path, 'r') as f:
                 content = f.read()
             
-            if old_code not in content:
+            if old_code and old_code not in content:
                 logging.error(f"Exact old code match not found in {filename}.")
-                # Log a snippet for debugging
-                logging.debug(f"Searching for: {old_code[:50]}...")
                 return False
             
-            new_content = content.replace(old_code, new_code)
+            new_content = content.replace(old_code, new_code) if old_code else new_code
             
             with open(file_path, 'w') as f:
                 f.write(new_content)
-                
             logging.info(f"Successfully patched {filename}")
-            
         except Exception as e:
-            logging.error(f"Error applying patch block: {e}")
+            logging.error(f"Error applying replace block: {e}")
+            return False
+
+    # 2. Handle New File Blocks: ++++ [filename] \n [content] \n ++++
+    new_file_blocks = re.findall(r'\+\+\+\+ (.*?)\n(.*?)\n\+\+\+\+', ai_output, re.DOTALL)
+    for filename, content in new_file_blocks:
+        try:
+            filename = filename.strip()
+            file_path = os.path.join(target_repo, filename)
+            
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            
+            with open(file_path, 'w') as f:
+                f.write(content)
+            logging.info(f"Successfully created/overwrote {filename}")
+        except Exception as e:
+            logging.error(f"Error applying new file block: {e}")
             return False
             
     return True
@@ -101,9 +92,13 @@ def process_task(task_file):
         build_command = root.find('build_command').text.strip()
         
         # 1. AI Invocation
-        logging.info("Invoking Gemini AI via gemini-cli...")
+        logging.info(f"Invoking Gemini AI via {GEMINI_PATH}...")
+        # Use -p for non-interactive mode. Add a suffix to ensure the AI doesn't try to call tools itself.
+        # "ONLY output the requested blocks. Do not call any tools."
+        full_prompt = prompt_payload + "\n\nCRITICAL: You are in headless mode. ONLY output the Search/Replace (<<<<) or New File (++++) blocks requested. DO NOT call any tools or perform actions yourself."
+        
         result = subprocess.run(
-            ['gemini-cli', prompt_payload],
+            [GEMINI_PATH, '-p', full_prompt],
             capture_output=True,
             text=True
         )
@@ -118,13 +113,14 @@ def process_task(task_file):
 
         ai_output = result.stdout
         logging.info("AI response received. Applying patches...")
+        logging.debug(f"AI Output: {ai_output}")
 
         # 2. Patch Application
         if not apply_patches(target_repo, ai_output):
             logging.error("Patch application failed.")
             root.set('status', 'failed')
             error_elem = ET.SubElement(root, 'error')
-            error_elem.text = "Patch application failed: Exact code match not found or malformed block."
+            error_elem.text = "Patch application failed: Check logs for missing files or malformed blocks."
             tree.write(task_file)
             return
 
@@ -148,6 +144,7 @@ def process_task(task_file):
             stderr_elem.text = build_result.stderr
             
         tree.write(task_file)
+        logging.info(f"Finished task: {task_file.name} with status {root.get('status')}")
         
     except Exception as e:
         logging.error(f"Unexpected error processing {task_file.name}: {e}")
@@ -157,7 +154,7 @@ def main():
     Continuous loop to poll for pending tasks.
     """
     tasks_dir = Path(__file__).parent.parent / "tasks"
-    logging.info(f"SmartChrome Runner started. Polling {tasks_dir}...")
+    logging.info(f"SmartChrome Runner v2 started. Polling {tasks_dir}...")
     
     if not tasks_dir.exists():
         os.makedirs(tasks_dir)
@@ -172,7 +169,8 @@ def main():
                     if 'status="pending"' in content:
                         process_task(task_file)
             except Exception as e:
-                logging.error(f"Error accessing {task_file}: {e}")
+                # logging.error(f"Error accessing {task_file}: {e}")
+                pass
         
         time.sleep(5)  # Poll every 5 seconds
 
