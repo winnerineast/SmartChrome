@@ -1,0 +1,184 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", embedding a local VLM into Chromium. 
+    Current Phase: Connecting MOD_01_FRONTEND_ENGINE -> IPC_PROTOCOL.
+    Task 004 successfully implemented the A11y tree extraction in the Renderer process. 
+    Now, we need to bridge the Renderer process and the Browser process. We will define a new Mojo interface `VLMPageHost` and update the `VLMSensor` to transmit the A11y JSON data over this Mojo pipe.
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo.</description>
+    <actions>
+      <action>Save this entire XML prompt text into: `~/SmartChrome/tasks/task_005_renderer_to_browser_mojo.xml`</action>
+      <action>Change directory to `~/SmartChrome`.</action>
+      <action>Execute: `git add tasks/task_005_renderer_to_browser_mojo.xml`</action>
+      <action>Execute: `git commit -m "task: implement mojo bridge from renderer to browser for a11y data transmission"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_chromium_execution>
+    <description>Update the Mojom interface and the Renderer sensor to send data.</description>
+    <actions>
+      <action>Change directory to your Chromium source tree (`~/chromium/src`).</action>
+      
+      <action>Patch the Mojom file `components/vlm_agent/public/mojom/vlm_agent.mojom` to add the VLMPageHost interface.</action>
+      <file_patch path="components/vlm_agent/public/mojom/vlm_agent.mojom">
+<<<<
+  // Used for the RLHF (Reinforcement Learning from Human Feedback) loop.
+  // Reports when a human intercepts and corrects a bad VLM action.
+  ReportHumanCorrection(
+      string state_id, 
+      string bad_action_json, 
+      string good_action_json);
+};
+====
+  // Used for the RLHF (Reinforcement Learning from Human Feedback) loop.
+  // Reports when a human intercepts and corrects a bad VLM action.
+  ReportHumanCorrection(
+      string state_id, 
+      string bad_action_json, 
+      string good_action_json);
+};
+
+// Implemented by the Browser process, called by the Renderer process.
+// Used to send the extracted UI state up to the trusted browser host.
+interface VLMPageHost {
+  // Transmits the dynamically extracted A11y tree JSON from the render frame.
+  OnA11yTreeUpdated(string a11y_json);
+};
+>>>>
+      </file_patch>
+
+      <action>Patch the header `components/vlm_agent/renderer/vlm_sensor.h` to include Mojo dependencies and the remote interface.</action>
+      <file_patch path="components/vlm_agent/renderer/vlm_sensor.h">
+<<<<
+#include "content/public/renderer/render_frame_observer.h"
+#include "third_party/blink/public/web/web_local_frame.h"
+#include "base/values.h"
+#include "base/time/time.h"
+#include <string>
+
+namespace vlm_agent {
+====
+#include "content/public/renderer/render_frame_observer.h"
+#include "third_party/blink/public/web/web_local_frame.h"
+#include "base/values.h"
+#include "base/time/time.h"
+#include <string>
+#include "mojo/public/cpp/bindings/remote.h"
+#include "components/vlm_agent/public/mojom/vlm_agent.mojom.h"
+
+namespace vlm_agent {
+>>>>
+      </file_patch>
+
+      <action>Patch the header `components/vlm_agent/renderer/vlm_sensor.h` to add the Mojo remote member variable.</action>
+      <file_patch path="components/vlm_agent/renderer/vlm_sensor.h">
+<<<<
+  // Stores the last captured state to detect UI changes
+  std::string last_a11y_json_;
+};
+====
+  // Stores the last captured state to detect UI changes
+  std::string last_a11y_json_;
+
+  // The Mojo remote to send data to the Browser process.
+  mojo::Remote<mojom::VLMPageHost> page_host_;
+};
+>>>>
+      </file_patch>
+
+      <action>Patch the implementation `components/vlm_agent/renderer/vlm_sensor.cc` to bind the remote and send the data.</action>
+      <file_patch path="components/vlm_agent/renderer/vlm_sensor.cc">
+<<<<
+VLMSensor::VLMSensor(content::RenderFrame* render_frame)
+    : content::RenderFrameObserver(render_frame),
+      min_cooldown_(base::Seconds(2)),
+      max_cooldown_(base::Seconds(10)),
+      current_cooldown_(base::Seconds(2)) {
+  // Allow immediate capture on first layout
+  last_capture_time_ = base::TimeTicks::Now() - current_cooldown_;
+}
+
+VLMSensor::~VLMSensor() = default;
+
+void VLMSensor::DidMeaningfulLayout(blink::WebMeaningfulLayout layout_type) {
+====
+#include "third_party/blink/public/common/browser_interface_broker_proxy.h"
+
+VLMSensor::VLMSensor(content::RenderFrame* render_frame)
+    : content::RenderFrameObserver(render_frame),
+      min_cooldown_(base::Seconds(2)),
+      max_cooldown_(base::Seconds(10)),
+      current_cooldown_(base::Seconds(2)) {
+  
+  // Bind the Mojo pipe to the Browser process via the Interface Broker
+  if (render_frame) {
+    render_frame->GetBrowserInterfaceBroker()->GetInterface(
+        page_host_.BindNewPipeAndPassReceiver());
+  }
+
+  // Allow immediate capture on first layout
+  last_capture_time_ = base::TimeTicks::Now() - current_cooldown_;
+}
+
+VLMSensor::~VLMSensor() = default;
+
+void VLMSensor::DidMeaningfulLayout(blink::WebMeaningfulLayout layout_type) {
+>>>>
+      </file_patch>
+
+      <action>Patch the implementation `components/vlm_agent/renderer/vlm_sensor.cc` to replace the IPC comment with the actual Mojo call.</action>
+      <file_patch path="components/vlm_agent/renderer/vlm_sensor.cc">
+<<<<
+  // ADAPTIVE POLLING LOGIC
+  if (new_a11y_json == last_a11y_json_) {
+    // UI hasn't changed. Increase cooldown by 2 seconds, up to max_cooldown_.
+    current_cooldown_ += base::Seconds(2);
+    if (current_cooldown_ > max_cooldown_) {
+      current_cooldown_ = max_cooldown_;
+    }
+  } else {
+    // UI has changed! Reset to minimum cooldown to stay responsive.
+    current_cooldown_ = min_cooldown_;
+    last_a11y_json_ = new_a11y_json;
+    
+    // Next Step: Send `new_a11y_json` via Mojo IPC
+  }
+
+  last_capture_time_ = now;
+====
+  // ADAPTIVE POLLING LOGIC
+  if (new_a11y_json == last_a11y_json_) {
+    // UI hasn't changed. Increase cooldown by 2 seconds, up to max_cooldown_.
+    current_cooldown_ += base::Seconds(2);
+    if (current_cooldown_ > max_cooldown_) {
+      current_cooldown_ = max_cooldown_;
+    }
+  } else {
+    // UI has changed! Reset to minimum cooldown to stay responsive.
+    current_cooldown_ = min_cooldown_;
+    last_a11y_json_ = new_a11y_json;
+    
+    // Send the fresh UI state to the Browser process
+    if (page_host_.is_bound()) {
+      page_host_->OnA11yTreeUpdated(new_a11y_json);
+    }
+  }
+
+  last_capture_time_ = now;
+>>>>
+      </file_patch>
+
+      <action>Update build configurations in `components/vlm_agent/BUILD.gn`. Ensure the `deps` for the renderer target include `//components/vlm_agent/public/mojom` so it can access the generated Mojo headers.</action>
+      <action>Execute build: `autoninja -C out/Default components/vlm_agent`</action>
+    </actions>
+  </phase_2_chromium_execution>
+
+  <execution_directive>
+    Execute Phase 1 to log the task. Then execute Phase 2, strictly applying the file patches. 
+    Critically check the `BUILD.gn` modification to ensure the mojo dependency is correctly linked for the renderer component.
+    Autonomously fix any C++ binding issues (e.g., Mojo include paths) and retry the build until it succeeds. Report the final exit code.
+  </execution_directive>
+</gemini_cli_task>
