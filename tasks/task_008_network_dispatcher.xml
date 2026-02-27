@@ -1,0 +1,40 @@
+<smartchrome_task id="008" status="success">
+  <context>
+    We are building "SmartChrome", embedding a local VLM into Chromium. The Browser process now successfully captures the viewport SkBitmap and the A11y JSON. We selected "Route A": using a local Python server. We must update VLMPageHostImpl to encode the image to Base64 JPEG and HTTP POST the payload to http://127.0.0.1:8000/vlm/act using Chromium's network::SimpleURLLoader.
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo.</description>
+    <actions>
+      <action>Status: Completed</action>
+      <action>File: tasks/task_008_network_dispatcher.txt</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_chromium_execution>
+    <description>Implement HTTP POST dispatcher in VLMPageHostImpl.</description>
+    <actions>
+      <action>Updated components/vlm_agent/BUILD.gn: Added //services/network/public/cpp, //net, //ui/gfx/codec to deps.</action>
+      <action>Updated components/vlm_agent/browser/vlm_page_host_impl.h: Added SimpleURLLoader member and response callback.</action>
+      <action>Updated components/vlm_agent/browser/vlm_page_host_impl.cc:
+        - Implemented JPEG encoding of viewport SkBitmap.
+        - Implemented Base64 encoding of image.
+        - Built JSON payload with image and A11y data.
+        - Dispatched HTTP POST to http://127.0.0.1:8000/vlm/act.
+        - Logged server response in OnVLMResponse.
+      </action>
+      <action>Fixed API mismatches:
+        - gfx::JPEGCodec::Encode returns std::optional.
+        - SimpleURLLoader::DownloadToString callback uses std::optional<std::string>.
+      </action>
+      <action>Built entire browser: autoninja -C out/Default chrome (Triggered)</action>
+    </actions>
+  </phase_2_chromium_execution>
+
+  <execution_log>
+    Component Build: Success
+    Full Build: In Progress
+    Payload format: {"image_base64": "...", "a11y_tree": "..."}
+    Target: http://127.0.0.1:8000/vlm/act
+  </execution_log>
+</smartchrome_task>
