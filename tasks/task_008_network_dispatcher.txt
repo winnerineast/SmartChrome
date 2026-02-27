@@ -1,0 +1,46 @@
+Task Context: Network Dispatcher for Local VLM
+We are building "SmartChrome", embedding a local VLM into Chromium. The Browser process now successfully captures the viewport SkBitmap and the A11y JSON. We selected "Route A": using a local Python server. We must update VLMPageHostImpl to encode the image to Base64 JPEG and HTTP POST the payload to  using Chromium's network::SimpleURLLoader.
+
+Phase 1: Project Management
+
+Save this entire prompt text into a new file: ~/SmartChrome/tasks/task_008_network_dispatcher.txt
+
+Change directory to ~/SmartChrome
+
+Execute: git add tasks/task_008_network_dispatcher.txt
+
+Execute: git commit -m "task: implement HTTP POST dispatcher to send multimodal payload to local Python VLM server"
+
+Execute: git push
+
+Phase 2: Chromium Execution
+
+Change directory to your Chromium source tree (~/chromium/src).
+
+GN Build Update: Update components/vlm_agent/BUILD.gn. Add "//services/network/public/cpp", "//net", and "//ui/gfx/codec" to the deps list of the browser target so we can use SimpleURLLoader and JPEGCodec.
+
+Header Patch: Patch components/vlm_agent/browser/vlm_page_host_impl.h.
+
+Add includes for "services/network/public/cpp/simple_url_loader.h" and "services/network/public/mojom/url_response_head.mojom.h".
+
+Add a member variable: std::unique_ptr<network::SimpleURLLoader> url_loader_;
+
+Add a callback method: void OnVLMResponse(std::unique_ptr<std::string> response_body);
+
+Implementation Patch: Patch components/vlm_agent/browser/vlm_page_host_impl.cc.
+
+In OnScreenshotCaptured, implement the following logic:
+a) Encode the SkBitmap to a JPEG byte vector using gfx::JPEGCodec::Encode(bitmap, 80, &compressed).
+b) Base64 encode the JPEG vector using base::Base64Encode.
+c) Build a JSON dictionary (base::Value::Dict) containing "image_base64" and "a11y_tree" (parsed from the a11y_json string or embedded as a string). Serialize it to a string.
+d) Instantiate a network::ResourceRequest, set url to "http://127.0.0.1:8000/vlm/act", and method to "POST".
+e) Initialize url_loader_ via network::SimpleURLLoader::Create() with a standard net::NetworkTrafficAnnotationTag (you can create a dummy one for this internal tool).
+f) Attach the JSON string as the request body using AttachStringForUpload with "application/json".
+g) Fetch the URLLoaderFactory by calling render_frame_host().GetStoragePartition()->GetURLLoaderFactoryForBrowserProcess().
+h) Call url_loader_->DownloadToString() and bind it to OnVLMResponse.
+
+In OnVLMResponse, log the response string from the local VLM server using LOG(INFO).
+
+Final Link: Execute the build command: autoninja -C out/Default chrome
+
+Execution Directive: Execute Phase 1 first, then Phase 2. CRITICAL: Chromium's SimpleURLLoader API and JSON writer require specific includes (e.g., content/public/browser/storage_partition.h, base/json/json_writer.h, base/base64.h). Autonomously inspect the headers and implement the C++ code properly without breaking the AST. Fix any GN dependency or missing include errors autonomously. Report the final build exit code.
