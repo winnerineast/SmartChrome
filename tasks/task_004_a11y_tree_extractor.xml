@@ -1,0 +1,115 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", embedding a local VLM into Chromium. 
+    Current Phase: Implementing the MOD_01_FRONTEND_ENGINE -> C_01_SENSOR. 
+    Task 003 successfully established the Mojo IPC bindings. Now, we need to create the C++ sensor in the Blink Render process to extract the Accessibility (A11y) tree and bounding boxes.
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo.</description>
+    <actions>
+      <action>Save this entire XML prompt text into: `~/SmartChrome/tasks/task_004_a11y_tree_extractor.xml`</action>
+      <action>Change directory to `~/SmartChrome`.</action>
+      <action>Execute: `git add tasks/task_004_a11y_tree_extractor.xml`</action>
+      <action>Execute: `git commit -m "task: implement a11y tree sensor in renderer"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_chromium_execution>
+    <description>Create the C++ RenderFrameObserver to extract Blink WebAXObject data.</description>
+    <actions>
+      <action>Change directory to your Chromium source tree (e.g., `~/chromium/src`).</action>
+      
+      <action>Create a new header file `components/vlm_agent/renderer/vlm_sensor.h` with the following content:</action>
+      <file_content path="components/vlm_agent/renderer/vlm_sensor.h">
+#ifndef COMPONENTS_VLM_AGENT_RENDERER_VLM_SENSOR_H_
+#define COMPONENTS_VLM_AGENT_RENDERER_VLM_SENSOR_H_
+
+#include "content/public/renderer/render_frame_observer.h"
+#include "third_party/blink/public/web/web_local_frame.h"
+
+namespace vlm_agent {
+
+// Observes the render frame and extracts the accessibility tree for the VLM.
+class VLMSensor : public content::RenderFrameObserver {
+ public:
+  explicit VLMSensor(content::RenderFrame* render_frame);
+  ~VLMSensor() override;
+
+  // content::RenderFrameObserver implementation:
+  void DidMeaningfulLayout(blink::WebMeaningfulLayout layout_type) override;
+  void OnDestruct() override;
+
+ private:
+  // Extracts the current A11y tree as a JSON string containing bounding boxes.
+  std::string CaptureA11yTreeWithCoordinates();
+};
+
+}  // namespace vlm_agent
+
+#endif  // COMPONENTS_VLM_AGENT_RENDERER_VLM_SENSOR_H_
+      </file_content>
+
+      <action>Create a new implementation file `components/vlm_agent/renderer/vlm_sensor.cc` with the following content:</action>
+      <file_content path="components/vlm_agent/renderer/vlm_sensor.cc">
+#include "components/vlm_agent/renderer/vlm_sensor.h"
+#include "third_party/blink/public/web/web_ax_object.h"
+#include "third_party/blink/public/web/web_document.h"
+#include "base/json/json_writer.h"
+#include "base/values.h"
+
+namespace vlm_agent {
+
+VLMSensor::VLMSensor(content::RenderFrame* render_frame)
+    : content::RenderFrameObserver(render_frame) {}
+
+VLMSensor::~VLMSensor() = default;
+
+void VLMSensor::DidMeaningfulLayout(blink::WebMeaningfulLayout layout_type) {
+  // Trigger A11y extraction when the layout is mostly stable
+  if (layout_type == blink::WebMeaningfulLayout::kVisuallyNonEmpty) {
+    std::string a11y_json = CaptureA11yTreeWithCoordinates();
+    // Next step will connect this string to the Mojo IPC pipe created in Task 003.
+  }
+}
+
+std::string VLMSensor::CaptureA11yTreeWithCoordinates() {
+  if (!render_frame() || !render_frame()->GetWebFrame())
+    return "{}";
+
+  blink::WebDocument document = render_frame()->GetWebFrame()->GetDocument();
+  blink::WebAXObject root_ax = blink::WebAXObject::FromWebDocument(document);
+  
+  if (root_ax.IsDetached())
+    return "{}";
+
+  // Dummy JSON structure for initial compilation check.
+  // We will expand this to recursively traverse the WebAXObject tree next.
+  base::Value::Dict root_dict;
+  root_dict.Set("status", "a11y_tree_captured");
+  root_dict.Set("root_role", static_cast<int>(root_ax.Role()));
+  
+  std::string output_json;
+  base::JSONWriter::Write(root_dict, &output_json);
+  
+  return output_json;
+}
+
+void VLMSensor::OnDestruct() {
+  delete this;
+}
+
+}  // namespace vlm_agent
+      </file_content>
+
+      <action>Update the build configurations. Find the `components/vlm_agent/BUILD.gn` file you created in Task 003. Add `renderer/vlm_sensor.cc` and `renderer/vlm_sensor.h` to its `sources`. Add `//third_party/blink/public:blink`, `//content/public/renderer`, and `//base` to its `deps`.</action>
+      
+      <action>Execute the build command: `autoninja -C out/Default components/vlm_agent`</action>
+    </actions>
+  </phase_2_chromium_execution>
+
+  <execution_directive>
+    Execute Phase 1 first. Then execute Phase 2. Ensure you modify the existing BUILD.gn properly to link Blink and Content Renderer dependencies. Report the final build exit code.
+  </execution_directive>
+</gemini_cli_task>
