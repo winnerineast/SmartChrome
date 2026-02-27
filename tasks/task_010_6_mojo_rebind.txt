@@ -1,0 +1,35 @@
+Task Context: Re-bind Mojo IPC Pipe in Renderer
+The logs show "Step 1" fires, but "Step 2" in the Browser is never reached. The Mojo pipe (page_host_) is likely unbound or disconnected when DoCaptureAndSend is called. We need to actively request the interface from the BrowserInterfaceBroker if it's not bound.
+
+Phase 1: Project Management
+
+Save this prompt to ~/SmartChrome/tasks/task_010_6_mojo_rebind.txt
+
+Change directory to ~/SmartChrome
+
+Execute: git add tasks/task_010_6_mojo_rebind.txt
+
+Execute: git commit -m "fix: force bind Mojo page_host_ before sending A11y ping to Browser"
+
+Execute: git push
+
+Phase 2: Chromium C++ Refactor
+
+Change directory to ~/chromium/src.
+
+Patch components/vlm_agent/renderer/vlm_sensor.cc:
+
+Make sure #include "third_party/blink/public/common/browser_interface_broker_proxy.h" is included.
+
+Inside DoCaptureAndSend(), locate the Step 1 log. Replace the ping logic with the following safe binding mechanism:
+
+C++
+if (!page_host_.is_bound()) {
+    LOG(INFO) << "[VLM Trace] Step 1.1: Mojo unbound! Requesting new pipe...";
+    render_frame()->GetBrowserInterfaceBroker()->GetInterface(page_host_.BindNewPipeAndPassReceiver());
+}
+LOG(INFO) << "[VLM Trace] Step 1.5: Sending ping across Mojo pipe.";
+page_host_->OnA11yTreeUpdated("{}");
+Execute the build command: autoninja -C out/Default chrome
+
+Execution Directive: Execute Phase 1, then Phase 2. Ensure the syntax aligns with Chromium's Mojo API. Autonomously fix any compilation errors related to GetBrowserInterfaceBroker. Report the final build exit code.
