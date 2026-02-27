@@ -1,0 +1,114 @@
+<cli_task>
+  <context>
+    We are initializing the System Architecture State document for the SmartChrome project. 
+    This document serves as the ground truth for all future Prompt-Driven CI/CD tasks. It defines the hardware constraints, model selections, and the 4-pillar module statuses.
+    The target file currently exists but is empty.
+  </context>
+
+  <target_file>docs/architecture_state.xml</target_file>
+
+  <requirements>
+    Write the complete XML architecture definition into the target file. 
+    Do not use Search/Replace blocks since the file is currently empty. Just output the exact content to be written to the file.
+  </requirements>
+
+  <execution_directive>
+    Output ONLY the file content below. Do not wrap it in markdown block quotes.
+  </execution_directive>
+
+  <file_content>
+<system_architecture_doc>
+  <metadata>
+    <project_name>Auto-Evolving OSINT VLM Agent (SmartChrome)</project_name>
+    <target_environment>Dell Alienware R16 (Local Execution, High VRAM/RAM)</target_environment>
+    <host_application>Chromium (Custom Build)</host_application>
+    <version>1.0.0</version>
+    <purpose>Autonomous web navigation, OSINT brief generation, and self-improving behavior loop via human RLHF.</purpose>
+  </metadata>
+
+  <global_variables>
+    <var name="MODEL_A" type="VLM" description="Frontend Actor. Embedded in Chrome via isolated process. Fast, responsive, vision-capable." target="Qwen3.5-35B-A3B (Quantized) OR Qwen3-VL" />
+    <var name="MODEL_B" type="LLM" description="Backend Teacher/Analyst. Local background process." target="Qwen2.5-32B-Instruct OR DeepSeek-V3" />
+    <var name="IPC_PROTOCOL" value="Chromium Mojo IPC" />
+    <var name="STORAGE" value="Local SQLite DB" />
+  </global_variables>
+
+  <modules>
+    <module id="MOD_01_FRONTEND_ENGINE" status="pending_implementation">
+      <description>Dual-state browser observer and actuator.</description>
+      <components>
+        <component id="C_01_SENSOR">
+          <input>Browser DOM updates, Render events</input>
+          <process>Extract Viewport Screenshot (Bitmap) + Simplified Accessibility Tree (A11y Tree with Bbox coordinates).</process>
+          <output format="json">{"screenshot_path": "...", "a11y_tree": [...]}</output>
+        </component>
+        <component id="C_02_ACTUATOR">
+          <input format="json">{"action": "click|scroll|type", "target_bbox": [x,y,w,h], "text": "..."}</input>
+          <process>Map logical actions to Chrome UI/Input Events.</process>
+          <output>System-level execution within sandbox.</output>
+        </component>
+        <component id="C_03_MODE_SWITCH">
+          <states>
+            <state name="SHADOW">Silently records User Actions mapped to C_01_SENSOR output.</state>
+            <state name="AUTONOMOUS">Routes MODEL_A output to C_02_ACTUATOR.</state>
+          </states>
+        </component>
+      </components>
+    </module>
+
+    <module id="MOD_02_DATA_COLLECTION" status="pending_implementation">
+      <description>RLHF data pipeline via human intervention.</description>
+      <components>
+        <component id="C_04_INTERCEPTOR">
+          <trigger>Hardware shortcut / Hotkey execution</trigger>
+          <process>Freeze MOD_01 AUTONOMOUS state. Capture immediate context.</process>
+        </component>
+        <component id="C_05_DELTA_LOGGER">
+          <input>Context from C_04, VLM intended action, Human corrected action</input>
+          <process>Create RLHF tuple.</process>
+          <output destination="STORAGE">Tuple(State_Image, State_A11y, Bad_Action_VLM, Good_Action_Human)</output>
+        </component>
+      </components>
+    </module>
+
+    <module id="MOD_03_TEACHER_PIPELINE" status="pending_implementation">
+      <description>Asynchronous data synthesis using MODEL_B.</description>
+      <components>
+        <component id="C_06_COT_GENERATOR">
+          <trigger>Cron job OR Queue threshold reached in STORAGE</trigger>
+          <input>Tuple from C_05_DELTA_LOGGER</input>
+          <process>Prompt MODEL_B to infer "Why was Bad_Action wrong and Good_Action right?". Generate Chain of Thought (CoT).</process>
+          <output>Enriched training data with logical reasoning.</output>
+        </component>
+        <component id="C_07_DATA_FORMATTER">
+          <input>Output from C_06</input>
+          <process>Convert to VLM SFT/DPO standard JSONL format.</process>
+          <output destination="STORAGE">training_dataset.jsonl</output>
+        </component>
+        <component id="C_08_OSINT_ANALYZER">
+          <input>Raw text/data scraped by MODEL_A during AUTONOMOUS mode</input>
+          <process>MODEL_B deduplicates, analyzes, and formats.</process>
+          <output format="markdown">Final OSINT Brief.</output>
+        </component>
+      </components>
+    </module>
+
+    <module id="MOD_04_EVOLUTION_LOOP" status="pending_implementation">
+      <description>Local LoRA fine-tuning and weight updating.</description>
+      <components>
+        <component id="C_09_LOCAL_FORGE">
+          <trigger>Nightly OR threshold = 100 entries in training_dataset.jsonl</trigger>
+          <process>Execute QLoRA script on MODEL_A using generated dataset. Merge LoRA weights into base model.</process>
+          <output>new_model_weights.gguf (or tflite)</output>
+        </component>
+        <component id="C_10_HOT_RELOADER">
+          <trigger>Successful completion of C_09</trigger>
+          <process>Send RELOAD signal via IPC_PROTOCOL to MODEL_A utility process.</process>
+          <output>MODEL_A memory swap without Chromium restart.</output>
+        </component>
+      </components>
+    </module>
+  </modules>
+</system_architecture_doc>
+  </file_content>
+</cli_task>
