@@ -1,0 +1,35 @@
+<cli_task>
+  <context>
+    We are building a local Python-based CI/CD orchestrator named `smartchrome_runner.py`. 
+    This script runs on an Alienware R16 and acts as an automated agent that reads XML task files, calls the `gemini-cli` binary via subprocess, parses the AI's code patches, applies them to local files, and triggers builds.
+  </context>
+
+  <requirements>
+    1. Language: Python 3. Standard libraries ONLY (os, subprocess, xml.etree.ElementTree, time, re, pathlib, logging). No external pip dependencies.
+    2. Task Polling: The script should scan a directory named `../tasks/` for any XML files containing `<smartchrome_task status="pending">`.
+    3. Parsing Task XML:
+       - Extract `<target_repo>` path.
+       - Extract `<prompt_payload>` text.
+       - Extract `<build_command>` string.
+    4. AI Invocation: Use `subprocess.run` to call `gemini-cli` (assume it's in the system PATH) and pass the `prompt_payload` to it. Capture the stdout.
+    5. Patch Application (CRITICAL):
+       - The AI stdout will contain Search/Replace blocks in this exact format:
+         <<<<
+         [exact old code to find]
+         ====
+         [new code to replace it with]
+         >>>>
+       - The script MUST use regex or string splitting to safely find the old code in the target files and replace it with the new code.
+       - If the exact old code is not found, log an error and abort the current task.
+    6. Build & Update: 
+       - If patching is successful, execute the `<build_command>` via subprocess.
+       - If the build returns exit code 0, modify the XML file to `<smartchrome_task status="success">`.
+       - If the build fails, modify the XML file to `<smartchrome_task status="failed">` and append the stderr log to the XML.
+  </requirements>
+
+  <execution_directive>
+    Write the complete, robust, and heavily commented Python 3 code for `smartchrome_runner.py`. 
+    Include robust error handling (try/except blocks).
+    Output ONLY the Python code. Do not wrap it in markdown code blocks, do not add conversational explanations.
+  </execution_directive>
+</cli_task>
