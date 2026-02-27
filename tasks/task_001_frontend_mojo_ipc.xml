@@ -1,0 +1,34 @@
+<smartchrome_task id="001" status="pending">
+  <target_repo>/home/nvidia/chromium/src</target_repo>
+  <build_command>autoninja -C out/Default components/vlm_agent</build_command>
+  
+  <prompt_payload>
+    <context>
+      Read the architecture state document (docs/architecture_state.xml). We are beginning the implementation of MOD_01_FRONTEND_ENGINE and IPC_PROTOCOL.
+      Our goal is to create a new isolated utility process in Chromium that will host our VLM (Model A). 
+      This initial task requires defining the core Mojo IPC interfaces that will bridge the Browser process (where UI events and rendering happen) with our new isolated VLM process.
+    </context>
+
+    <requirements>
+      1. Create a new Mojo interface definition file for the VLM agent.
+      2. The interface should be named `VLMObserver`.
+      3. It must include a method `OnPageStateCaptured` that accepts:
+         - A shared memory buffer or BigBuffer for the viewport screenshot (RGBA data).
+         - A string representing the simplified A11y Tree (bounding boxes).
+      4. It must return a string `action_response` (JSON representing the VLM's decision, e.g., click/scroll).
+      5. Include a method `ReportHumanCorrection` (taking state_id, bad_action, good_action as strings) for our Pillar 2 Intercept mechanism.
+    </requirements>
+
+    <execution_directive>
+      We are creating a completely NEW file. Output the EXACT file path relative to Chromium's `src` root where this should reside (e.g., `components/vlm_agent/public/mojom/vlm_agent.mojom`).
+      Then, output the full file content inside a standard creation block. Do NOT wrap it in markdown block quotes. Use the following format strictly:
+
+      ++++ components/vlm_agent/public/mojom/vlm_agent.mojom
+      module vlm_agent.mojom;
+      
+      import "mojo/public/mojom/base/big_buffer.mojom";
+      // ... rest of your code ...
+      ++++
+    </execution_directive>
+  </prompt_payload>
+</smartchrome_task>
