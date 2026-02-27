@@ -1,34 +1,57 @@
-<smartchrome_task id="001" status="pending">
-  <target_repo>/home/nvidia/chromium/src</target_repo>
-  <build_command>autoninja -C out/Default components/vlm_agent</build_command>
-  
-  <prompt_payload>
-    <context>
-      Read the architecture state document (docs/architecture_state.xml). We are beginning the implementation of MOD_01_FRONTEND_ENGINE and IPC_PROTOCOL.
-      Our goal is to create a new isolated utility process in Chromium that will host our VLM (Model A). 
-      This initial task requires defining the core Mojo IPC interfaces that will bridge the Browser process (where UI events and rendering happen) with our new isolated VLM process.
-    </context>
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", embedding a local Vision-Language Model (VLM) into Chromium. 
+    You have two jobs in this task: 
+    1. Save this task definition to the project tracking repository.
+    2. Execute the actual C++ coding and compilation in the Chromium source repository.
+  </context>
 
-    <requirements>
-      1. Create a new Mojo interface definition file for the VLM agent.
-      2. The interface should be named `VLMObserver`.
-      3. It must include a method `OnPageStateCaptured` that accepts:
-         - A shared memory buffer or BigBuffer for the viewport screenshot (RGBA data).
-         - A string representing the simplified A11y Tree (bounding boxes).
-      4. It must return a string `action_response` (JSON representing the VLM's decision, e.g., click/scroll).
-      5. Include a method `ReportHumanCorrection` (taking state_id, bad_action, good_action as strings) for our Pillar 2 Intercept mechanism.
-    </requirements>
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo so we have a record of what we are doing.</description>
+    <actions>
+      <action>Ensure directory `~/SmartChrome/tasks/` exists.</action>
+      <action>Save this entire XML prompt text into a new file located at: `~/SmartChrome/tasks/task_001_mojo_ipc.xml`</action>
+      <action>Change directory to `~/SmartChrome`.</action>
+      <action>Execute: `git add tasks/task_001_mojo_ipc.xml`</action>
+      <action>Execute: `git commit -m "task: add mojo ipc interface definition prompt"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
 
-    <execution_directive>
-      We are creating a completely NEW file. Output the EXACT file path relative to Chromium's `src` root where this should reside (e.g., `components/vlm_agent/public/mojom/vlm_agent.mojom`).
-      Then, output the full file content inside a standard creation block. Do NOT wrap it in markdown block quotes. Use the following format strictly:
-
-      ++++ components/vlm_agent/public/mojom/vlm_agent.mojom
-      module vlm_agent.mojom;
+  <phase_2_chromium_execution>
+    <description>Implement the IPC bridge between the main Browser Process and our isolated VLM Utility Process.</description>
+    <actions>
+      <action>Change directory to your Chromium source tree (e.g., `~/chromium/src`).</action>
+      <action>Create a new file exactly at `components/vlm_agent/public/mojom/vlm_agent.mojom` with the following content:</action>
       
-      import "mojo/public/mojom/base/big_buffer.mojom";
-      // ... rest of your code ...
-      ++++
-    </execution_directive>
-  </prompt_payload>
-</smartchrome_task>
+      <file_content path="components/vlm_agent/public/mojom/vlm_agent.mojom">
+module vlm_agent.mojom;
+
+import "mojo/public/mojom/base/big_buffer.mojom";
+
+// The core interface for communicating with the embedded VLM process.
+interface VLMObserver {
+  // Sends the current viewport and accessibility tree to the VLM.
+  // Returns a JSON string containing the VLM's decided action (e.g., click, scroll).
+  OnPageStateCaptured(
+      mojo_base.mojom.BigBuffer screenshot_rgba, 
+      string a11y_tree_json) => (string action_response);
+
+  // Used for the RLHF (Reinforcement Learning from Human Feedback) loop.
+  // Reports when a human intercepts and corrects a bad VLM action.
+  ReportHumanCorrection(
+      string state_id, 
+      string bad_action_json, 
+      string good_action_json);
+};
+      </file_content>
+
+      <action>Execute the build command: `autoninja -C out/Default components/vlm_agent`</action>
+    </actions>
+  </phase_2_chromium_execution>
+
+  <execution_directive>
+    Execute Phase 1 first to secure the task record. Then execute Phase 2. 
+    Report back when both the GitHub push is successful and the autoninja build completes. Show the final exit code of the build.
+  </execution_directive>
+</gemini_cli_task>
