@@ -1,0 +1,199 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", embedding a local VLM into Chromium. 
+    Current Phase: Implementing the MOD_01_FRONTEND_ENGINE -> C_01_SENSOR. 
+    CRITICAL ARCHITECTURE UPDATE: We are implementing an "Adaptive Polling / Backoff" mechanism. The sensor will check the A11y tree at a minimum 2-second interval. If the UI hasn't changed (comparing the JSON output), the cooldown increases incrementally up to a maximum of 10 seconds. If a change is detected, the cooldown instantly resets to 2 seconds.
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this optimized prompt to the SmartChrome GitHub repo.</description>
+    <actions>
+      <action>Save this entire XML prompt text into: `~/SmartChrome/tasks/task_004_a11y_tree_extractor_adaptive.xml`</action>
+      <action>Change directory to `~/SmartChrome`.</action>
+      <action>Execute: `git add tasks/task_004_a11y_tree_extractor_adaptive.xml`</action>
+      <action>Execute: `git commit -m "task: implement adaptive A11y tree sensor with dynamic backoff cooldown"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_chromium_execution>
+    <description>Create the smart C++ RenderFrameObserver with adaptive throttling.</description>
+    <actions>
+      <action>Change directory to your Chromium source tree (`~/chromium/src`).</action>
+      
+      <action>Create header file `components/vlm_agent/renderer/vlm_sensor.h`:</action>
+      <file_content path="components/vlm_agent/renderer/vlm_sensor.h">
+#ifndef COMPONENTS_VLM_AGENT_RENDERER_VLM_SENSOR_H_
+#define COMPONENTS_VLM_AGENT_RENDERER_VLM_SENSOR_H_
+
+#include "content/public/renderer/render_frame_observer.h"
+#include "third_party/blink/public/web/web_local_frame.h"
+#include "base/values.h"
+#include "base/time/time.h"
+#include <string>
+
+namespace vlm_agent {
+
+// Observes the render frame and extracts the accessibility tree for the VLM.
+class VLMSensor : public content::RenderFrameObserver {
+ public:
+  explicit VLMSensor(content::RenderFrame* render_frame);
+  ~VLMSensor() override;
+
+  // content::RenderFrameObserver implementation:
+  void DidMeaningfulLayout(blink::WebMeaningfulLayout layout_type) override;
+  void OnDestruct() override;
+
+ private:
+  // Extracts the current A11y tree as a JSON string containing bounding boxes.
+  std::string CaptureA11yTreeWithCoordinates();
+
+  // Recursive helper to traverse the WebAXObject tree.
+  void TraverseAXNode(const blink::WebAXObject& obj, base::ListValue& node_list);
+
+  // A running counter to assign a unique ID to every interactive element.
+  int current_target_id_ = 0;
+
+  // Adaptive Throttling State
+  base::TimeTicks last_capture_time_;
+  base::TimeDelta current_cooldown_;
+  base::TimeDelta min_cooldown_;
+  base::TimeDelta max_cooldown_;
+  
+  // Stores the last captured state to detect UI changes
+  std::string last_a11y_json_;
+};
+
+}  // namespace vlm_agent
+
+#endif  // COMPONENTS_VLM_AGENT_RENDERER_VLM_SENSOR_H_
+      </file_content>
+
+      <action>Create implementation file `components/vlm_agent/renderer/vlm_sensor.cc`:</action>
+      <file_content path="components/vlm_agent/renderer/vlm_sensor.cc">
+#include "components/vlm_agent/renderer/vlm_sensor.h"
+#include "third_party/blink/public/web/web_ax_object.h"
+#include "third_party/blink/public/web/web_document.h"
+#include "base/json/json_writer.h"
+#include "base/values.h"
+#include "ui/gfx/geometry/rect_f.h"
+#include "ui/gfx/geometry/transform.h"
+
+namespace vlm_agent {
+
+VLMSensor::VLMSensor(content::RenderFrame* render_frame)
+    : content::RenderFrameObserver(render_frame),
+      min_cooldown_(base::Seconds(2)),
+      max_cooldown_(base::Seconds(10)),
+      current_cooldown_(base::Seconds(2)) {
+  // Allow immediate capture on first layout
+  last_capture_time_ = base::TimeTicks::Now() - current_cooldown_;
+}
+
+VLMSensor::~VLMSensor() = default;
+
+void VLMSensor::DidMeaningfulLayout(blink::WebMeaningfulLayout layout_type) {
+  if (layout_type != blink::WebMeaningfulLayout::kVisuallyNonEmpty)
+    return;
+
+  base::TimeTicks now = base::TimeTicks::Now();
+  if (now - last_capture_time_ < current_cooldown_) {
+    return; // Still in cooldown period
+  }
+
+  std::string new_a11y_json = CaptureA11yTreeWithCoordinates();
+
+  // ADAPTIVE POLLING LOGIC
+  if (new_a11y_json == last_a11y_json_) {
+    // UI hasn't changed. Increase cooldown by 2 seconds, up to max_cooldown_.
+    current_cooldown_ += base::Seconds(2);
+    if (current_cooldown_ > max_cooldown_) {
+      current_cooldown_ = max_cooldown_;
+    }
+  } else {
+    // UI has changed! Reset to minimum cooldown to stay responsive.
+    current_cooldown_ = min_cooldown_;
+    last_a11y_json_ = new_a11y_json;
+    
+    // Next Step: Send `new_a11y_json` via Mojo IPC
+  }
+
+  last_capture_time_ = now;
+}
+
+void VLMSensor::TraverseAXNode(const blink::WebAXObject& obj, base::ListValue& node_list) {
+  if (obj.IsDetached()) return;
+
+  bool is_interactive = obj.CanSetFocusAttribute() || obj.IsClickable();
+  bool has_text = !obj.ComputedName().IsEmpty();
+
+  if (is_interactive || has_text) {
+    base::DictValue node_dict;
+    node_dict.Set("target_id", ++current_target_id_);
+    node_dict.Set("role", static_cast<int>(obj.Role()));
+    
+    if (has_text) {
+      node_dict.Set("name", obj.ComputedName().Utf8());
+    }
+
+    gfx::RectF bounds;
+    gfx::Transform transform;
+    obj.GetRelativeBounds(nullptr, bounds, transform);
+    
+    base::ListValue bbox;
+    bbox.Append(bounds.x());
+    bbox.Append(bounds.y());
+    bbox.Append(bounds.width());
+    bbox.Append(bounds.height());
+    node_dict.Set("bbox", std::move(bbox));
+
+    node_list.Append(std::move(node_dict));
+  }
+
+  // Recursively process children
+  for (unsigned i = 0; i < obj.ChildCount(); ++i) {
+    TraverseAXNode(obj.ChildAt(i), node_list);
+  }
+}
+
+std::string VLMSensor::CaptureA11yTreeWithCoordinates() {
+  if (!render_frame() || !render_frame()->GetWebFrame())
+    return "{}";
+
+  blink::WebDocument document = render_frame()->GetWebFrame()->GetDocument();
+  blink::WebAXObject root_ax = blink::WebAXObject::FromWebDocument(document);
+  
+  if (root_ax.IsDetached())
+    return "{}";
+
+  current_target_id_ = 0;
+  base::ListValue a11y_nodes;
+  
+  TraverseAXNode(root_ax, a11y_nodes);
+  
+  base::DictValue root_dict;
+  root_dict.Set("status", "success");
+  root_dict.Set("nodes", std::move(a11y_nodes));
+  
+  std::string output_json;
+  base::JSONWriter::Write(base::Value(std::move(root_dict)), &output_json);
+  
+  return output_json;
+}
+
+void VLMSensor::OnDestruct() {
+  delete this;
+}
+
+}  // namespace vlm_agent
+      </file_content>
+
+      <action>Update build configurations in `components/vlm_agent/BUILD.gn` to compile `vlm_sensor.cc`. Ensure `//third_party/blink/public:blink`, `//content/public/renderer`, `//ui/gfx/geometry`, and `//base` are in its `deps`.</action>
+      <action>Execute build: `autoninja -C out/Default components/vlm_agent`</action>
+    </actions>
+  </phase_2_chromium_execution>
+
+  <execution_directive>
+    Execute Phase 1 to log the task. Then execute Phase 2. Autonomously inspect `third_party/blink/public/web/web_ax_object.h` if method signatures mismatch, fix the code, and retry until the build succeeds. Report the final exit code.
+  </execution_directive>
+</gemini_cli_task>
