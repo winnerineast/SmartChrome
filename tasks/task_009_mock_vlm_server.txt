@@ -1,0 +1,42 @@
+Task Context: Mock VLM Server Implementation
+We need to create a Python FastAPI server to act as a dummy VLM backend for testing the SmartChrome telemetry pipeline. It will listen on port 8000, receive the payload from Chromium, save the image and JSON to disk for debugging, and return a mock action.
+
+Phase 1: Project Management
+
+Save this prompt to ~/SmartChrome/tasks/task_009_mock_vlm_server.txt
+
+Change directory to ~/SmartChrome
+
+Execute: git add tasks/task_009_mock_vlm_server.txt
+
+Execute: git commit -m "task: implement Python mock VLM server to test telemetry pipeline"
+
+Execute: git push
+
+Phase 2: Python Backend Creation
+
+Ensure the directory ~/SmartChrome/backend/ exists.
+
+Create a file at ~/SmartChrome/backend/requirements.txt containing two lines: fastapi and uvicorn.
+
+Create a file at ~/SmartChrome/backend/mock_server.py.
+
+The Python code must import FastAPI, base64, json, and Pydantic.
+
+Define a Pydantic BaseModel named VLMPayload with two string fields: image_base64 and a11y_tree.
+
+Initialize a FastAPI app.
+
+Create a POST route at /vlm/act that accepts the VLMPayload.
+
+Inside the route handler:
+
+Decode the base64 string into bytes and write it to ~/SmartChrome/backend/debug_latest_screenshot.jpg.
+
+Write the a11y_tree string to ~/SmartChrome/backend/debug_latest_a11y.json.
+
+Print a success message to the console indicating the payload size.
+
+Return a dictionary: {"status": "success", "action": "click", "target_id": 1, "message": "Mock VLM received the payload"}.
+
+Execution Directive: Execute Phase 1, then Phase 2. Create the Python script and requirements file perfectly. DO NOT execute the python server yourself, as it will block your process. Just create the files, install the pip requirements if possible, and report successful completion.
