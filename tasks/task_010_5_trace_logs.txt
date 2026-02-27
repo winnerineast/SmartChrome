@@ -1,0 +1,41 @@
+Task Context: Add Trace Logs to VLM Pipeline
+Our telemetry pipeline is silently failing before the HTTP POST. We need to inject LOG(INFO) statements at every step of the IPC and async callbacks to trace where the chain breaks.
+
+Phase 1: Project Management
+
+Save this prompt to ~/SmartChrome/tasks/task_010_5_trace_logs.txt
+
+Change directory to ~/SmartChrome
+
+Execute: git add tasks/task_010_5_trace_logs.txt
+
+Execute: git commit -m "debug: add VLM Trace logs across Renderer and Browser to diagnose silent failure"
+
+Execute: git push
+
+Phase 2: Injecting Trace Logs
+
+Change directory to ~/chromium/src.
+
+Patch components/vlm_agent/renderer/vlm_sensor.cc:
+
+Inside DoCaptureAndSend(), right before calling page_host_->OnA11yTreeUpdated("{}");, add:
+LOG(INFO) << "[VLM Trace] Step 1: Renderer sending ping.";
+
+Patch components/vlm_agent/browser/vlm_page_host_impl.cc:
+
+Inside OnA11yTreeUpdated(), at the very beginning, add:
+LOG(INFO) << "[VLM Trace] Step 2: Browser received ping. Requesting AXTree.";
+
+Inside ProcessAXTree(), at the very beginning, add:
+LOG(INFO) << "[VLM Trace] Step 3: AXTree callback fired. Nodes count: " << update.nodes.size();
+
+Inside ProcessAXTree(), right before calling view->CopyFromSurface(...), add:
+LOG(INFO) << "[VLM Trace] Step 4: Requesting CopyFromSurface.";
+
+Inside OnScreenshotCaptured(), at the very beginning, add:
+LOG(INFO) << "[VLM Trace] Step 5: Screenshot callback fired. Bitmap empty? " << bitmap.empty();
+
+Execute the build command: autoninja -C out/Default chrome
+
+Execution Directive: Execute Phase 1, then Phase 2. Ensure all LOG statements are correctly placed. Report the final build exit code.
