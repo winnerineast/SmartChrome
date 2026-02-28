@@ -80,21 +80,21 @@
       </components>
     </module>
 
-    <module id="MOD_03_TEACHER_PIPELINE" status="pending_implementation">
+    <module id="MOD_03_TEACHER_PIPELINE" status="implemented">
       <description>Asynchronous data synthesis using MODEL_B.</description>
       <components>
-        <component id="C_06_COT_GENERATOR">
+        <component id="C_06_COT_GENERATOR" status="implemented">
           <trigger>Cron job OR Queue threshold reached in STORAGE</trigger>
           <input>Tuple from C_05_DELTA_LOGGER</input>
-          <process>Prompt MODEL_B to infer "Why was Bad_Action wrong and Good_Action right?". Generate Chain of Thought (CoT).</process>
+          <process>Polls SQLite via teacher_worker.py. Prompt MODEL_B (Teacher LLM) to infer "Why was Bad_Action wrong and Good_Action right?". Generate Chain of Thought (CoT).</process>
           <output>Enriched training data with logical reasoning.</output>
         </component>
-        <component id="C_07_DATA_FORMATTER">
+        <component id="C_07_DATA_FORMATTER" status="implemented">
           <input>Output from C_06</input>
           <process>Convert to VLM SFT/DPO standard JSONL format.</process>
           <output destination="STORAGE">training_dataset.jsonl</output>
         </component>
-        <component id="C_08_OSINT_ANALYZER">
+        <component id="C_08_OSINT_ANALYZER" status="pending_implementation">
           <input>Raw text/data scraped by MODEL_A during AUTONOMOUS mode</input>
           <process>MODEL_B deduplicates, analyzes, and formats.</process>
           <output format="markdown">Final OSINT Brief.</output>

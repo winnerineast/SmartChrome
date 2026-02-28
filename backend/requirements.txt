@@ -4,3 +4,4 @@ vllm
 mlx-vlm
 pillow
 huggingface_hub
+openai

@@ -36,9 +36,14 @@ def init_db():
             image_base64 TEXT,
             a11y_tree TEXT,
             bad_action TEXT,
-            good_action TEXT
+            good_action TEXT,
+            processed INTEGER DEFAULT 0
         )
     """)
+    try:
+        cursor.execute("ALTER TABLE tuples ADD COLUMN processed INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass # Already exists
     conn.commit()
     conn.close()
 
