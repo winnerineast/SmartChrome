@@ -5,3 +5,8 @@ mlx-vlm
 pillow
 huggingface_hub
 openai
+peft
+transformers
+torch
+bitsandbytes
+mlx_lm

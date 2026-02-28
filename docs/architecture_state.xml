@@ -102,15 +102,15 @@
       </components>
     </module>
 
-    <module id="MOD_04_EVOLUTION_LOOP" status="pending_implementation">
+    <module id="MOD_04_EVOLUTION_LOOP" status="implemented">
       <description>Local LoRA fine-tuning and weight updating.</description>
       <components>
-        <component id="C_09_LOCAL_FORGE">
-          <trigger>Nightly OR threshold = 100 entries in training_dataset.jsonl</trigger>
-          <process>Execute QLoRA script on MODEL_A using generated dataset. Merge LoRA weights into base model.</process>
-          <output>new_model_weights.gguf (or tflite)</output>
+        <component id="C_09_LOCAL_FORGE" status="implemented">
+          <trigger>Nightly OR threshold = 50 entries in training_dataset.jsonl</trigger>
+          <process>Execute QLoRA script (local_forge.py) on MODEL_A using generated dataset. Merge LoRA weights into base model.</process>
+          <output>new_model_weights.gguf (or tflite/safetensors)</output>
         </component>
-        <component id="C_10_HOT_RELOADER">
+        <component id="C_10_HOT_RELOADER" status="pending_implementation">
           <trigger>Successful completion of C_09</trigger>
           <process>Send RELOAD signal via IPC_PROTOCOL to MODEL_A utility process.</process>
           <output>MODEL_A memory swap without Chromium restart.</output>
