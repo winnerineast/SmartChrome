@@ -29,7 +29,8 @@ The task queue in `tasks/` currently commands the AI Agent to build the followin
 - **Task `004`**: Implementing the core Accessibility (A11y) tree extraction from the Blink Renderer.
 - **Task `005-006`**: Dispatching state from the Renderer to the Browser Process and capturing full-page RGBA viewport screenshots.
 - **Task `007-008`**: Wiring the internal mechanisms and preparing the network dispatching logic to bounce payloads to the VLM Server.
-- **Task `009-010`**: Hotfixes and refinements to ensure the Blink accessibility cache isn't dirtied, and fixing stale Mojo pipes.
+- **Task `009`**: Setting up the Mock VLM Server and providing a hotfix for dirty Blink accessibility cache crashes.
+- **Task `010+`**: Implementing Native Axtree Pivot extraction, adding VLM trace logging, and fixing Mojo pipe lifecycles (stale pipes and rebinds).
 
 ## ⚙️ Prerequisites
 
