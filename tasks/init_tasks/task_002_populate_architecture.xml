@@ -22,36 +22,64 @@
     <project_name>Auto-Evolving OSINT VLM Agent (SmartChrome)</project_name>
     <target_environment>Dell Alienware R16 (Local Execution, High VRAM/RAM)</target_environment>
     <host_application>Chromium (Custom Build)</host_application>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <purpose>Autonomous web navigation, OSINT brief generation, and self-improving behavior loop via human RLHF.</purpose>
   </metadata>
 
   <global_variables>
     <var name="MODEL_A" type="VLM" description="Frontend Actor. Embedded in Chrome via isolated process. Fast, responsive, vision-capable." target="Qwen3.5-35B-A3B (Quantized) OR Qwen3-VL" />
     <var name="MODEL_B" type="LLM" description="Backend Teacher/Analyst. Local background process." target="Qwen2.5-32B-Instruct OR DeepSeek-V3" />
-    <var name="IPC_PROTOCOL" value="Chromium Mojo IPC" />
+    <var name="IPC_PROTOCOL" value="Chromium Mojo IPC (vlm_agent.mojom, vlm_renderer.mojom)" />
+    <var name="INTERNAL_ROUTING" value="REST API Dispatcher (http://127.0.0.1:8000/vlm/act)" />
     <var name="STORAGE" value="Local SQLite DB" />
   </global_variables>
 
   <modules>
-    <module id="MOD_01_FRONTEND_ENGINE" status="pending_implementation">
-      <description>Dual-state browser observer and actuator.</description>
+    <module id="MOD_01_FRONTEND_ENGINE" status="in_progress">
+      <description>Dual-state browser observer and actuator. Extracts WebContents state and executes UI commands.</description>
       <components>
-        <component id="C_01_SENSOR">
-          <input>Browser DOM updates, Render events</input>
-          <process>Extract Viewport Screenshot (Bitmap) + Simplified Accessibility Tree (A11y Tree with Bbox coordinates).</process>
-          <output format="json">{"screenshot_path": "...", "a11y_tree": [...]}</output>
+        <component id="C_01_SENSOR_RENDERER_EXTRACTOR">
+          <description>High-Level: Extracts DOM and Render events from the Blink process.</description>
+          <tangible_implementation>
+            Hooks into `DidMeaningfulLayout` inside `Blink`. Uses `base::SingleThreadTaskRunner::PostDelayedTask` to wait for clean layout cache, then walks `AXObjectCache` to extract a simplified Accessibility Tree with bounding boxes. Sends to Browser via `vlm_renderer.mojom` IPC.
+          </tangible_implementation>
+          <output format="json">{"a11y_tree": [...]}</output>
         </component>
+        
+        <component id="C_01B_SENSOR_BROWSER_PIVOT">
+          <description>High-Level: Extracts clean OS-level Accessibility Tree directly from Browser process, bypassing Renderer complexity.</description>
+          <tangible_implementation>
+            Pivots to native extraction using `ui::AXNode` and `AXTreeSerializer` on the Browser side to gather accessibility states directly from the `WebContents` root, ensuring cross-process frame support.
+          </tangible_implementation>
+        </component>
+
+        <component id="C_01C_SENSOR_AGGREGATOR">
+          <description>High-Level: Takes visual viewport screenshot and aggregates sensory data.</description>
+          <tangible_implementation>
+            A `WebContentsObserver` inside the Browser Process. Triggers `RenderWidgetHostView::CopyFromSurface` to capture the full RGBA viewport bitmap when layout changes occur.
+          </tangible_implementation>
+          <output format="json">{"screenshot_rgba": "...", "a11y_tree_json": "..."}</output>
+        </component>
+        
+        <component id="C_01D_NETWORK_DISPATCHER">
+          <description>High-Level: Bridges internal Chromium C++ with Python ML Backend.</description>
+          <tangible_implementation>
+            Takes the aggregated Screenshot + A11y payload, constructs a JSON HTTP POST request, and dispatches it over the network to the Mock VLM Server (`http://127.0.0.1:8000/vlm/act`).
+          </tangible_implementation>
+        </component>
+
         <component id="C_02_ACTUATOR">
+          <description>High-Level: Executes VLM logical actions on the browser.</description>
+          <tangible_implementation>Pending. Will map logical actions (`click`, `scroll`, `type`) and `target_bbox` dimensions from the VLM JSON response into native Chromium UI/Input Events.</tangible_implementation>
           <input format="json">{"action": "click|scroll|type", "target_bbox": [x,y,w,h], "text": "..."}</input>
-          <process>Map logical actions to Chrome UI/Input Events.</process>
           <output>System-level execution within sandbox.</output>
         </component>
-        <component id="C_03_MODE_SWITCH">
-          <states>
-            <state name="SHADOW">Silently records User Actions mapped to C_01_SENSOR output.</state>
-            <state name="AUTONOMOUS">Routes MODEL_A output to C_02_ACTUATOR.</state>
-          </states>
+        
+        <component id="C_03_VLM_UTILITY_PROCESS">
+          <description>High-Level: Isolated sandbox process holding the VLM and managing modes.</description>
+          <tangible_implementation>
+            Launched via `ServiceProcessHost::Launch`. Communicates with Browser via `VLMObserver` Mojo interface (`vlm_agent.mojom`). Holds the state logic for SHADOW (Record) vs AUTONOMOUS (Act) modes.
+          </tangible_implementation>
         </component>
       </components>
     </module>
