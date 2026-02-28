@@ -1,0 +1,49 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", an Auto-Evolving OSINT VLM Agent.
+    This task focuses on Phase 6: The Local Forge (`C_09_LOCAL_FORGE`).
+    We need to execute actual ML fine-tuning on the edge using the RLHF data generated in `training_dataset.jsonl`.
+    CRITICAL: This script must support execution on either a Linux CUDA machine (RTX 4090) OR an Apple Silicon machine (Mac M2 Max).
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo.</description>
+    <actions>
+      <action>Save this XML to: `~/SmartChrome/tasks/task_016_local_forge_qlora.xml`</action>
+      <action>Execute: `git add tasks/task_016_local_forge_qlora.xml`</action>
+      <action>Execute: `git commit -m "task: add local forge qlora dual script prompt"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_python_backend>
+    <description>Implement the Hardware-Aware QLoRA script.</description>
+    <actions>
+      <action>Change directory to `~/SmartChrome/backend`.</action>
+      <action>Update `requirements.txt` to include: `peft`, `transformers`, `torch` (for CUDA) and `mlx_lm` (for Apple Silicon).</action>
+      <action>Create `local_forge.py`.</action>
+      <action>Read `training_dataset.jsonl`. If line count < 50, exit early.</action>
+      <action>Use `sys.platform` to detect hardware hardware.</action>
+      <action>IF Linux/CUDA (Alienware):
+          - Use `transformers` and `peft`.
+          - Load `Qwen/Qwen2.5-VL-7B-Instruct` in 4-bit (`bitsandbytes`).
+          - Prepare LoRA config (rank=16, alpha=32).
+          - Initialize `SFTTrainer` with the JSONL dataset.
+          - Call `trainer.train()`.
+          - Merge adapter weights and save as `.gguf` to `~/SmartChrome/backend/models/SmartChrome-v2.gguf`.
+      </action>
+      <action>IF Mac (Apple Silicon / M2 Max):
+          - Use Apple's `mlx_lm`.
+          - Load `mlx-community/Qwen2.5-VL-7B-Instruct-4bit`.
+          - Format the JSONL dataset for `mlx_lm.lora`.
+          - Execute `mlx_lm.lora` training routine targeting the Unified Memory constraints.
+          - Fuse the adapter weights into the base model and save to `~/SmartChrome/backend/models/SmartChrome-v2-mlx.safetensors`.
+      </action>
+      <action>Clear the `training_dataset.jsonl` file after successful artifact generation.</action>
+    </actions>
+  </phase_2_python_backend>
+
+  <execution_directive>
+    Execute Phase 1 safely. Phase 2 requires heavy logic generation; ensure robust try/except logic around the hardware framework imports (`mlx` vs `transformers`).
+  </execution_directive>
+</gemini_cli_task>

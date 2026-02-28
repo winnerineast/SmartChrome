@@ -1,0 +1,38 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", an Auto-Evolving OSINT VLM Agent.
+    This task focuses on Phase 5: The OSINT Analyzer (`C_08_OSINT_ANALYZER`).
+    When the VLM reaches its target data, it will scrape raw HTML/Text. We need a Python endpoint to accept this messy data and use a Teacher LLM to deduplicate, analyze, and format it into a professional Markdown brief.
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo.</description>
+    <actions>
+      <action>Ensure directory `~/SmartChrome/tasks/` exists.</action>
+      <action>Save this entire XML prompt text into a new file located at: `~/SmartChrome/tasks/task_015_osint_analyzer.xml`</action>
+      <action>Change directory to `~/SmartChrome`.</action>
+      <action>Execute: `git add tasks/task_015_osint_analyzer.xml`</action>
+      <action>Execute: `git commit -m "task: add osint analyzer prompt"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_python_backend>
+    <description>Implement the OSINT Analyzer Endpoint.</description>
+    <actions>
+      <action>Change directory to `~/SmartChrome/backend`.</action>
+      <action>Ensure the `openai` SDK is in `requirements.txt`.</action>
+      <action>Create a new file `osint_analyzer.py` (or add to `vlm_server.py`).</action>
+      <action>Expose a FastAPI endpoint: `POST /osint/analyze`.</action>
+      <action>The endpoint accepts JSON: `{ "objective": "...", "raw_data": "..." }`.</action>
+      <action>Use the `openai` SDK (configured via `TEACHER_API_KEY` and `TEACHER_BASE_URL`) to call the Teacher LLM (e.g., DeepSeek/Qwen).</action>
+      <action>System Prompt: "You are an expert OSINT Analyst. Your objective is: {objective}. Here is raw, unstructured data scraped by an autonomous agent: {raw_data}. Deduplicate this information, extract the core insights, and generate a professional, well-structured Markdown brief."</action>
+      <action>Save the LLM's Markdown response to `~/SmartChrome/backend/reports/osint_brief_{timestamp}.md`.</action>
+      <action>Return a success message and the file path in the HTTP response.</action>
+    </actions>
+  </phase_2_python_backend>
+
+  <execution_directive>
+    Execute Phase 1 to secure the record, then execute Phase 2.
+  </execution_directive>
+</gemini_cli_task>
