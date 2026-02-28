@@ -1,0 +1,54 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", embedding a local Vision-Language Model (VLM) into Chromium.
+    This task focuses on Phase 3: The RLHF Interceptor (`MOD_02_DATA_COLLECTION`).
+    When the VLM takes an incorrect action in AUTONOMOUS mode, the human user must be able to instantly press a native Chromium UI Toolbar button to freeze the VLM, perform the correct action manually, and log the tuple (Image, A11y, Bad Action, Good Action) to an SQLite database on our Python backend.
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo so we have a record of what we are doing.</description>
+    <actions>
+      <action>Ensure directory `~/SmartChrome/tasks/` exists.</action>
+      <action>Save this entire XML prompt text into a new file located at: `~/SmartChrome/tasks/task_013_rlhf_interceptor.xml`</action>
+      <action>Change directory to `~/SmartChrome`.</action>
+      <action>Execute: `git add tasks/task_013_rlhf_interceptor.xml`</action>
+      <action>Execute: `git commit -m "task: add rlhf interceptor and sqlite logger prompt"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_chromium_frontend>
+    <description>Implement the Native Chromium UI Toolbar Badge & Interceptor.</description>
+    <actions>
+      <action>Change directory to your Chromium source tree (`~/chromium/src`).</action>
+      <action>Modify `chrome/browser/ui/views/toolbar/toolbar_view.cc` to add a new `views::ImageButton` (or `ToolbarButton`) permanently visible next to the extensions puzzle piece.</action>
+      <action>This button (the `VLMActionBadge`) will toggle "Intervention Mode" inside the `VLMObserver` when clicked.</action>
+      <action>When clicked:
+        1. Set boolean `is_intervening = true` in the `VLMObserver`.
+        2. Block any pending or future REST API calls going to the Python VLM Backend.
+        3. Stash the last parsed `{"action": "...", "target_bbox": ...}` that the VLM attempted.
+      </action>
+      <action>With `is_intervening` active, hook into the `WebContentsObserver` to listen for the immediate next human mouse click or keyboard typing event in the viewport.</action>
+      <action>Extract that native user event into a JSON format identical to the VLM's schema (e.g., convert the screen coordinates to a `target_bbox`).</action>
+      <action>Construct the final payload: `{ "timestamp": "...", "state_image_base64": "...", "state_a11y_tree": "{...}", "vlm_bad_action": {...}, "human_good_action": {...} }`.</action>
+      <action>Fire this payload via a `net::SimpleURLLoader` POST request to `http://127.0.0.1:8000/vlm/rlhf_log`.</action>
+      <action>Reset `is_intervening = false`.</action>
+    </actions>
+  </phase_2_chromium_frontend>
+
+  <phase_3_python_backend>
+    <description>Implement the SQLite Database sink on the edge server.</description>
+    <actions>
+      <action>Change directory to `~/SmartChrome/backend`.</action>
+      <action>Modify `vlm_server.py`.</action>
+      <action>Import `sqlite3`. Ensure the server creates a local `rlhf_tuples.db` on startup if it doesn't exist.</action>
+      <action>Create a table: `CREATE TABLE IF NOT EXISTS tuples (id INTEGER PRIMARY KEY, timestamp TEXT, image_base64 TEXT, a11y_tree TEXT, bad_action TEXT, good_action TEXT)`.</action>
+      <action>Expose a new FastAPI endpoint: `POST /vlm/rlhf_log`.</action>
+      <action>The endpoint should parse the incoming JSON payload and execute `INSERT INTO tuples`.</action>
+    </actions>
+  </phase_3_python_backend>
+
+  <execution_directive>
+    Execute Phase 1 first. Then Phase 2 (C++) and compile `autoninja -C out/Default chrome`. Finally, execute Phase 3 (Python) to update the backend.
+  </execution_directive>
+</gemini_cli_task>
