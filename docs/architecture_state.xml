@@ -11,7 +11,7 @@
     <var name="MODEL_A" type="VLM" description="Frontend Actor. Embedded in Chrome via isolated process. Fast, responsive, vision-capable." target="Qwen3.5-35B-A3B (Quantized) OR Qwen3-VL" />
     <var name="MODEL_B" type="LLM" description="Backend Teacher/Analyst. Local background process." target="Qwen2.5-32B-Instruct OR DeepSeek-V3" />
     <var name="IPC_PROTOCOL" value="Chromium Mojo IPC (vlm_agent.mojom, vlm_renderer.mojom)" />
-    <var name="INTERNAL_ROUTING" value="REST API Dispatcher (http://127.0.0.1:8000/vlm/act)" />
+    <var name="INTERNAL_ROUTING" value="REST API Dispatcher (http://127.0.0.1:8000/vlm/act)" status="implemented" description="Now uses hardware-aware Python server (vlm_server.py)" />
     <var name="STORAGE" value="Local SQLite DB" />
   </global_variables>
 
