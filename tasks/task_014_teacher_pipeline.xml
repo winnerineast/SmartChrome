@@ -1,0 +1,48 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", an Auto-Evolving OSINT VLM Agent.
+    This task focuses on Phase 4: The Teacher Pipeline (`MOD_03_TEACHER_PIPELINE`).
+    In the previous task, we built an interceptor that logs tuple data (Image, A11y, Bad Action, Good Action) into `rlhf_tuples.db`.
+    We now need a background Python script (`teacher_worker.py`) that acts as the "Mentor". It will poll the database, analyze the human's correction using a Large Language Model (LLM), and output a Chain of Thought (CoT) reasoning. The final result is appended to a `training_dataset.jsonl` file suitable for future Supervised Fine-Tuning.
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo so we have a record of what we are doing.</description>
+    <actions>
+      <action>Ensure directory `~/SmartChrome/tasks/` exists.</action>
+      <action>Save this entire XML prompt text into a new file located at: `~/SmartChrome/tasks/task_014_teacher_pipeline.xml`</action>
+      <action>Change directory to `~/SmartChrome`.</action>
+      <action>Execute: `git add tasks/task_014_teacher_pipeline.xml`</action>
+      <action>Execute: `git commit -m "task: add teacher rlhf synthesis pipeline prompt"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_python_backend>
+    <description>Implement the LLM Mentor Background Worker.</description>
+    <actions>
+      <action>Change directory to `~/SmartChrome/backend`.</action>
+      <action>Update `requirements.txt` to include the `openai` Python SDK (so the user can point the Teacher pipeline to DeepSeek via their API, or Ollama locally later).</action>
+      <action>Modify `vlm_server.py` or a separate schema script to ensure the `tuples` table in `rlhf_tuples.db` has a `processed INTEGER DEFAULT 0` column.</action>
+      <action>Create a new script: `teacher_worker.py`.</action>
+      <action>The script should run an infinite loop (e.g., polling every 60 seconds) connecting to `rlhf_tuples.db`. Select rows where `processed = 0`.</action>
+      <action>For each unprocessed row, use the `openai` SDK to call an LLM. Use environment variables `TEACHER_API_KEY` and `TEACHER_BASE_URL` to configure the client so it's flexible.</action>
+      <action>Construct the Mentor Prompt:
+        "You are an AI Mentor overseeing an autonomous web agent.
+        Here is the accessibility tree of the screen: {a11y_tree}.
+        The agent attempted this incorrect action: {bad_action}.
+        A human intervened and performed this correct action: {good_action}.
+        Analyze the accessibility tree and explain the logical reasoning why the human's action was correct and the agent's action was wrong. Keep the explanation under 200 words."
+      </action>
+      <action>Take the LLM's response (the Chain of Thought) and format a training JSON line mapping the data standard conversational format. Example:
+        `{"messages": [{"role": "system", "content": "You are SmartChrome..."}, {"role": "user", "content": [{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,{image_base64}"}}, {"type": "text", "text": "{a11y_tree}"}]}, {"role": "assistant", "content": "<think>{llm_cot}</think>\n{good_action}"}]}`
+      </action>
+      <action>Append this JSON object to a new file: `~/SmartChrome/backend/training_dataset.jsonl`.</action>
+      <action>Update the database row to `processed = 1`.</action>
+    </actions>
+  </phase_2_python_backend>
+
+  <execution_directive>
+    Execute Phase 1 first to save the instructions. Then execute Phase 2 to build the Python background worker. Report back when `teacher_worker.py` is safely constructed.
+  </execution_directive>
+</gemini_cli_task>
