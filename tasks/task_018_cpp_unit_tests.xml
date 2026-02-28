@@ -1,0 +1,35 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", an Auto-Evolving OSINT VLM Agent.
+    This task focuses on Phase 8: Testing Framework (C++ Unit Tests).
+    To ensure the complex Native Accessibility bridging and Synthetic Input injection works, we need robust isolated Google Tests (`gtest`) running inside the Chromium build tree without relying on a real Python backend.
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo.</description>
+    <actions>
+      <action>Save this XML to: `~/SmartChrome/tasks/task_018_cpp_unit_tests.xml`</action>
+      <action>Execute: `git add tasks/task_018_cpp_unit_tests.xml`</action>
+      <action>Execute: `git commit -m "task: add c++ unit tests prompt"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_chromium_cxx>
+    <description>Implement `vlm_agent_unittests.cc`.</description>
+    <actions>
+      <action>Change directory to `~/chromium/src`.</action>
+      <action>Create a new file `components/vlm_agent/browser/vlm_agent_unittest.cc`.</action>
+      <action>Include necessary headers: `testing/gtest/include/gtest/gtest.h`, `content/public/test/test_renderer_host.h`, `content/public/test/web_contents_tester.h`.</action>
+      <action>Create `SensoryExtractorTest`: Setup a fake `WebContents` with dummy HTML containing a single `<button id="target">Test</button>`. Verify that the Native Accessibility Pivot extracts this specific button and bounding box accurately.</action>
+      <action>Create `ActuatorTest`: Feed a fake JSON payload `{"action": "click", "target_bbox": [10, 10, 50, 50]}` into `VLMActuator::ExecuteAction`. Use a mock `RenderWidgetHostView` to intercept and verify that a synthetic `blink::WebMouseEvent` of type `MouseDown` and `MouseUp` was correctly dispatched to the correct coordinate payload.</action>
+      <action>Update `components/vlm_agent/BUILD.gn` to compile a new executable target: `vlm_agent_unittests`.</action>
+      <action>Run `autoninja -C out/Default vlm_agent_unittests`.</action>
+      <action>Execute the compiled test binary: `out/Default/vlm_agent_unittests` and verify it passes.</action>
+    </actions>
+  </phase_2_chromium_cxx>
+
+  <execution_directive>
+    Execute Phase 1, then heavily focus on Phase 2. Writing Chromium unit tests involving `WebContentsTester` can be tricky; make sure to instantiate the correct `RenderViewHostTestEnabler` fixtures.
+  </execution_directive>
+</gemini_cli_task>

@@ -1,0 +1,34 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", an Auto-Evolving OSINT VLM Agent.
+    This task focuses on Phase 8: Testing Framework (Python Backend Unit Tests).
+    We must verify the FastAPI routing, LLM processing logic, and SQLite database schemas without needing to fire up the heavy Chromium browser and ML models.
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo.</description>
+    <actions>
+      <action>Save this XML to: `~/SmartChrome/tasks/task_019_python_unit_tests.xml`</action>
+      <action>Execute: `git add tasks/task_019_python_unit_tests.xml`</action>
+      <action>Execute: `git commit -m "task: add python backend unit tests prompt"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_python_backend>
+    <description>Implement Python Pytest Suite.</description>
+    <actions>
+      <action>Change directory to `~/SmartChrome/backend`.</action>
+      <action>Ensure `pytest` and `httpx` are in `requirements.txt`.</action>
+      <action>Create a new directory `tests/` and a file `tests/test_vlm_server.py`.</action>
+      <action>Implement `test_vlm_act_endpoint_parsing`: Use `fastapi.testclient.TestClient` to POST dummy Base64 and A11y JSON to `/vlm/act`. Mock the `mlx_vlm` or `vllm` engines using `unittest.mock` so they instantly return a fake JSON string `{"action": "click", "target_bbox": [1,2,3,4]}`. Verify the endpoint parses and returns it correctly with HTTP 200.</action>
+      <action>Implement `test_sqlite_tuple_insertion`: Mock an in-memory SQLite database (`:memory:`). POST a dummy bad/good action tuple to `POST /vlm/rlhf_log`. Query the in-memory DB to assert the row was saved accurately.</action>
+      <action>Implement `test_teacher_prompt_generation`: Instantiate the Teacher LLM worker logic. Mock the `openai.ChatCompletion.create` call. Feed it a raw DB row and assert that the output string accurately formats the `training_dataset.jsonl` conversational format.</action>
+      <action>Execute tests via: `python3 -m pytest tests/`.</action>
+    </actions>
+  </phase_2_python_backend>
+
+  <execution_directive>
+    Carefully structure the `unittest.mock.patch` decorators so the tests run instantly without attempting to allocate real GPU VRAM or loading the 7B models.
+  </execution_directive>
+</gemini_cli_task>

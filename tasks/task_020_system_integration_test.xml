@@ -1,0 +1,39 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", an Auto-Evolving OSINT VLM Agent.
+    This task focuses on Phase 8: Testing Framework (End-to-End System Integration).
+    We must prove the entire SmartChrome loop works synchronously: Headless Chromium -> Network Dispatcher -> Python Mock Server -> Chromium Actuator -> Native Event Injection.
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo.</description>
+    <actions>
+      <action>Save this XML to: `~/SmartChrome/tasks/task_020_system_integration_test.xml`</action>
+      <action>Execute: `git add tasks/task_020_system_integration_test.xml`</action>
+      <action>Execute: `git commit -m "task: add system integration test pipeline prompt"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_python_automation>
+    <description>Implement E2E Automation Pipeline.</description>
+    <actions>
+      <action>Change directory to `~/SmartChrome/scripts`.</action>
+      <action>Create `test_e2e_integration.py` and a companion HTML file `test_page.html`.</action>
+      <action>Inside `test_page.html`: Create a simple HTML document with a giant button (`<button id="target_btn" onclick="document.body.style.backgroundColor='green';">Click Me</button>`).</action>
+      <action>Inside `test_e2e_integration.py`:</action>
+      <action>Import `subprocess`, `time`, `pyppeteer` (or use `selenium`/`playwright` depending on preference).</action>
+      <action>Step 1: Use `subprocess.Popen` to launch `backend/mock_server.py` on port 8000. Wait 2 seconds for it to bind.</action>
+      <action>Step 2: Use Pyppeteer to launch the custom-compiled binary at `~/chromium/src/out/Default/chrome`. Pass the vital flags: `--headless=new` and `--force-renderer-accessibility`.</action>
+      <action>Step 3: Tell Pyppeteer to navigate the browser to `file://.../test_page.html`.</action>
+      <action>Step 4: The internal Chromium `VLMObserver` should automatically trigger upon layout, ping the `mock_server.py`, receive the mock click action, and dispatch a synthetic mouse event to the button.</action>
+      <action>Step 5: Use Pyppeteer to poll the DOM `document.body.style.backgroundColor`. If it turns `green` within 10 seconds, the C++ Actuator fired the physical native event successfully!</action>
+      <action>Step 6: Gracefully `kill()` the Chromium and Mock Server subprocesses.</action>
+      <action>Exit with code `0` for success or `1` for failure.</action>
+    </actions>
+  </phase_2_python_automation>
+
+  <execution_directive>
+    This script is the ultimate proof of concept that the C++ to Python bridge is watertight. Make sure the Pyppeteer initialization correctly points to the locally compiled binary rather than a downloading a stock Chrome binary.
+  </execution_directive>
+</gemini_cli_task>
