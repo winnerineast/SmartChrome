@@ -16,7 +16,16 @@
   </global_variables>
 
   <modules>
-    <module id="MOD_01_FRONTEND_ENGINE" status="in_progress">
+    <module id="MOD_00_TEST_SUITE" status="implemented">
+      <description>Automated verification suite for SmartChrome components.</description>
+      <components>
+        <component id="C_00A_CPP_UNIT_TESTS" status="implemented">
+          <description>GTest suite for VLM components (Actuator, Observer, PageHost).</description>
+          <tangible_implementation>vlm_agent_unittests (C++). Runs in Chromium build tree.</tangible_implementation>
+        </component>
+      </components>
+    </module>
+    <module id="MOD_01_FRONTEND_ENGINE" status="implemented">
       <description>Dual-state browser observer and actuator. Extracts WebContents state and executes UI commands.</description>
       <components>
         <component id="C_01_SENSOR_RENDERER_EXTRACTOR">
