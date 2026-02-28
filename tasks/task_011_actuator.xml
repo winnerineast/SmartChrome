@@ -1,0 +1,47 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", embedding a local Vision-Language Model (VLM) into Chromium.
+    This task focuses on Phase 1: The Frontend Engine. Specifically, we need to implement `C_02_ACTUATOR` from our architecture.
+    Currently, the Network Dispatcher sends the visual state to our backend and receives a JSON action (e.g., click, type, scroll).
+    The Chromium Browser Process needs a mechanism to parse this JSON and synthetically inject native UI/Input Events into the `WebContents` to physically execute the VLM's instructions.
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo so we have a record of what we are doing.</description>
+    <actions>
+      <action>Ensure directory `~/SmartChrome/tasks/` exists.</action>
+      <action>Save this entire XML prompt text into a new file located at: `~/SmartChrome/tasks/task_011_actuator.xml`</action>
+      <action>Change directory to `~/SmartChrome`.</action>
+      <action>Execute: `git add tasks/task_011_actuator.xml`</action>
+      <action>Execute: `git commit -m "task: add actuator implementation prompt"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_chromium_execution>
+    <description>Implement the VLM Actuator to synthesize native browser input events.</description>
+    <actions>
+      <action>Change directory to your Chromium source tree (e.g., `~/chromium/src`).</action>
+      <action>Create new files: `components/vlm_agent/browser/vlm_actuator.h` and `components/vlm_agent/browser/vlm_actuator.cc`.</action>
+      <action>The `VLMActuator` class should take a `content::WebContents*`.</action>
+      <action>Implement a method `ExecuteAction(const std::string& action_json_string)`.</action>
+      <action>The JSON will have formats like:
+        1. `{"action": "click", "target_bbox": [x, y, w, h]}`
+        2. `{"action": "scroll", "direction": "down"}`
+        3. `{"action": "type", "text": "Hello World", "target_bbox": [x, y, w, h]}` // click first, then type
+      </action>
+      <action>Use the `base::JSONReader` to securely parse the string.</action>
+      <action>To synthesize input, retrieve the `content::RenderWidgetHostView*` from the `WebContents`. Use it to get the `content::RenderWidgetHost*` and inject synthetic `blink::WebMouseEvent`, `blink::WebMouseWheelEvent`, and `content::NativeWebKeyboardEvent`.</action>
+      <action>For a click: compute the center point of the `target_bbox`. Send a `MouseDown` event followed asynchronously by a `MouseUp` event.</action>
+      <action>For type: loop through the characters and dispatch Char/KeyDown events to the RenderWidgetHost.</action>
+      <action>Integrate `VLMActuator` into the existing Network Dispatcher or Observer so that when the HTTP response returns from the VLM Server, `ExecuteAction` is called asynchronously on the UI thread.</action>
+      <action>Update `components/vlm_agent/BUILD.gn` to include the new actuator files.</action>
+      <action>Execute the build command: `autoninja -C out/Default components/vlm_agent chrome`</action>
+    </actions>
+  </phase_2_chromium_execution>
+
+  <execution_directive>
+    Execute Phase 1 first to secure the task record. Then execute Phase 2. 
+    Report back when both the GitHub push is successful and the autoninja build completes. Show the final exit code of the build.
+  </execution_directive>
+</gemini_cli_task>
