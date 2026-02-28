@@ -1,0 +1,48 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", an Auto-Evolving OSINT VLM Agent.
+    This task focuses on Phase 9: Professionalization (Configuration Manager).
+    Currently, variables like API ports, model parameters (MLX vs vLLM), and database locations are hardcoded into Python and C++. 
+    We need an automated setup script that detects the host hardware (Apple Silicon vs WSL2/CUDA), probes the environment, and dynamically writes a robust `smartchrome_config.json`. Both the Python Backend and C++ Frontend will read this master file on startup.
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo.</description>
+    <actions>
+      <action>Ensure directory `~/SmartChrome/tasks/` exists.</action>
+      <action>Save this XML to: `~/SmartChrome/tasks/task_021_configuration_manager.xml`</action>
+      <action>Execute: `git add tasks/task_021_configuration_manager.xml`</action>
+      <action>Execute: `git commit -m "task: add auto-detecting configuration manager prompt"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_python_backend>
+    <description>Implement the Auto-Configurator and update the backend.</description>
+    <actions>
+      <action>Change directory to `~/SmartChrome/scripts`.</action>
+      <action>Create a new utility: `setup_env.py`.</action>
+      <action>Use `sys.platform` to detect `darwin` (Mac) or `linux` (WSL2/Ubuntu). Use `subprocess` to check if `nvidia-smi` exists.</action>
+      <action>If Mac+M2: Output a JSON object mapping the engine to `"mlx"` and model to `"mlx-community/Qwen2.5-VL-7B-Instruct-4bit"`.</action>
+      <action>If Linux+NVIDIA: Output a JSON object mapping the engine to `"vllm"` and model to `"Qwen/Qwen2.5-VL-7B-Instruct"`.</action>
+      <action>Include global variables: `host: "127.0.0.1"`, `port: 8000`, `db_path: "backend/rlhf_tuples.db"`.</action>
+      <action>Write this dictionary beautifully using Python's `json` module to `~/SmartChrome/smartchrome_config.json`.</action>
+      <action>Modify `backend/vlm_server.py`, `backend/local_forge.py`, and `backend/teacher_worker.py` to strip out hardcoded strings. They must now read `smartchrome_config.json` on startup to initialize their ML engines and ports dynamically.</action>
+    </actions>
+  </phase_2_python_backend>
+
+  <phase_3_chromium_frontend>
+    <description>Implement Native JSON Parsing in C++.</description>
+    <actions>
+      <action>Change directory to `~/chromium/src`.</action>
+      <action>Modify the `C_01D_NETWORK_DISPATCHER` component (e.g., inside `components/vlm_agent/browser/...`).</action>
+      <action>Use Chromium's native `base::JSONReader::ReadAndReturnValueWithError` to parse `~/SmartChrome/smartchrome_config.json` upon Browser process initialization.</action>
+      <action>Extract the `host` and `port` fields, and dynamically configure the `net::SimpleURLLoader` POST requests so they point to the correct dynamically generated URL (e.g., `http://127.0.0.1:8000/vlm/act`) rather than hardocded strings.</action>
+      <action>Recompile the Chromium target using `autoninja` to finalize the native integration.</action>
+    </actions>
+  </phase_3_chromium_frontend>
+
+  <execution_directive>
+    Execute Phase 1 to capture the intent. Phase 2 ensures the Python layer is dynamic. Phase 3 ensures the heavy C++ browser never needs to be recompiled just because the user switched from Mac to PC or changed a port.
+  </execution_directive>
+</gemini_cli_task>
