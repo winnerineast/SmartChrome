@@ -4,6 +4,7 @@ import json
 import base64
 import io
 import sqlite3
+import gc
 from datetime import datetime
 from PIL import Image
 from fastapi import FastAPI, HTTPException
@@ -38,6 +39,9 @@ class OSINTAnalyzeRequest(BaseModel):
     objective: str
     raw_data: str
 
+class ReloadModelRequest(BaseModel):
+    new_model_path: str
+
 # Database Initialization
 DB_PATH = "rlhf_tuples.db"
 
@@ -68,26 +72,45 @@ init_db()
 print(f"Detected Platform: {sys.platform}")
 
 model_engine = None
+llm = None
+sampling_params = None
+model = None
+processor = None
 
-if sys.platform == "darwin":
-    print("Initializing MLX-VLM for Apple Silicon...")
-    try:
-        from mlx_vlm import load, generate
-        model_path = "mlx-community/Qwen2.5-VL-7B-Instruct-4bit"
-        model, processor = load(model_path)
-        model_engine = "mlx"
-    except ImportError:
-        print("mlx-vlm not installed.")
-else:
-    print("Initializing VLLM for CUDA/Linux...")
-    try:
-        from vllm import LLM, SamplingParams
-        model_path = "Qwen/Qwen2.5-VL-7B-Instruct"
-        llm = LLM(model=model_path, trust_remote_code=True, max_model_len=4096)
-        sampling_params = SamplingParams(temperature=0.0, max_tokens=512)
-        model_engine = "vllm"
-    except ImportError:
-        print("vllm not installed.")
+def load_vlm_model(model_path=None):
+    global model_engine, llm, sampling_params, model, processor
+    
+    # Clean up existing model
+    if llm:
+        del llm
+        import torch
+        torch.cuda.empty_cache()
+    if model:
+        del model
+    gc.collect()
+
+    if sys.platform == "darwin":
+        print("Initializing MLX-VLM...")
+        try:
+            from mlx_vlm import load
+            path = model_path or "mlx-community/Qwen2.5-VL-7B-Instruct-4bit"
+            model, processor = load(path)
+            model_engine = "mlx"
+        except ImportError:
+            print("mlx-vlm not installed.")
+    else:
+        print("Initializing VLLM...")
+        try:
+            from vllm import LLM, SamplingParams
+            path = model_path or "Qwen/Qwen2.5-VL-7B-Instruct"
+            llm = LLM(model=path, trust_remote_code=True, max_model_len=4096)
+            sampling_params = SamplingParams(temperature=0.0, max_tokens=512)
+            model_engine = "vllm"
+        except ImportError:
+            print("vllm not installed.")
+
+# Initial Load
+load_vlm_model()
 
 @app.post("/vlm/act")
 async def act(request: VLMActionRequest):
@@ -149,25 +172,26 @@ async def analyze_osint(request: OSINTAnalyzeRequest):
                 {"role": "user", "content": user_content}
             ]
         )
-
         markdown_brief = response.choices[0].message.content.strip()
         
-        # Save to reports
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_filename = f"osint_brief_{timestamp}.md"
-        report_path = os.path.join("reports", report_filename)
-        
+        report_path = os.path.join("reports", f"osint_brief_{timestamp}.md")
         os.makedirs("reports", exist_ok=True)
         with open(report_path, "w") as f:
             f.write(markdown_brief)
 
-        return {
-            "status": "success",
-            "report_path": report_path,
-            "brief_preview": markdown_brief[:500] + "..."
-        }
+        return {"status": "success", "report_path": report_path}
     except Exception as e:
-        print(f"OSINT Analysis Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/vlm/reload")
+async def reload_model(request: ReloadModelRequest):
+    try:
+        print(f"Hot Reloading Model from: {request.new_model_path}")
+        load_vlm_model(request.new_model_path)
+        return {"status": "success", "model_engine": model_engine}
+    except Exception as e:
+        print(f"Reload Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

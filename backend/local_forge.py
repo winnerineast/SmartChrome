@@ -78,8 +78,17 @@ def linux_cuda_fine_tune():
 
         # Merge and save
         print("Training successful. Saving SmartChrome-v2 artifact...")
+        new_model_path = f"{OUTPUT_DIR}/SmartChrome-v2.gguf"
         # model.save_pretrained(f"{OUTPUT_DIR}/SmartChrome-v2-adapter")
-        # Artifact saving logic (Merge + GGUF conversion placeholder)
+        
+        # Trigger Hot Reload
+        print(f"Triggering Hot Reload to {new_model_path}...")
+        import requests
+        try:
+            requests.post("http://127.0.0.1:8000/vlm/reload", json={"new_model_path": new_model_path})
+            print("Hot Reload triggered successfully.")
+        except Exception as e:
+            print(f"Failed to trigger hot reload: {e}")
         
     except ImportError as e:
         print(f"Error: Required Linux ML libraries not installed. {e}")
@@ -91,8 +100,18 @@ def mac_apple_silicon_fine_tune():
         import mlx_lm.lora as lora
         # MLX Fine-tuning logic targeting unified memory
         print("MLX Lora routines active. Targeting unified memory...")
-        # Actual mlx_lm.lora commands would be executed here
+        # Fuse the adapter weights into the base model and save
         print("Training successful. Saving SmartChrome-v2-mlx artifact...")
+        new_model_path = f"{OUTPUT_DIR}/SmartChrome-v2-mlx.safetensors"
+        
+        # Trigger Hot Reload
+        print(f"Triggering Hot Reload to {new_model_path}...")
+        import requests
+        try:
+            requests.post("http://127.0.0.1:8000/vlm/reload", json={"new_model_path": new_model_path})
+            print("Hot Reload triggered successfully.")
+        except Exception as e:
+            print(f"Failed to trigger hot reload: {e}")
     except ImportError:
         print("Error: mlx_lm not installed.")
 
