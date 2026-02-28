@@ -94,10 +94,10 @@
           <process>Convert to VLM SFT/DPO standard JSONL format.</process>
           <output destination="STORAGE">training_dataset.jsonl</output>
         </component>
-        <component id="C_08_OSINT_ANALYZER" status="pending_implementation">
+        <component id="C_08_OSINT_ANALYZER" status="implemented">
           <input>Raw text/data scraped by MODEL_A during AUTONOMOUS mode</input>
-          <process>MODEL_B deduplicates, analyzes, and formats.</process>
-          <output format="markdown">Final OSINT Brief.</output>
+          <process>MODEL_B (Teacher LLM) deduplicates, analyzes, and formats via /osint/analyze endpoint.</process>
+          <output format="markdown">Final OSINT Brief saved in backend/reports/.</output>
         </component>
       </components>
     </module>

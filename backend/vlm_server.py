@@ -9,8 +9,19 @@ from PIL import Image
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
+from openai import OpenAI
 
 app = FastAPI()
+
+# Configuration from Environment Variables
+TEACHER_API_KEY = os.environ.get("TEACHER_API_KEY", "EMPTY")
+TEACHER_BASE_URL = os.environ.get("TEACHER_BASE_URL", "http://localhost:11434/v1")
+TEACHER_MODEL = os.environ.get("TEACHER_MODEL", "qwen2.5:32b")
+
+client = OpenAI(
+    api_key=TEACHER_API_KEY,
+    base_url=TEACHER_BASE_URL,
+)
 
 class VLMActionRequest(BaseModel):
     image_base64: str
@@ -22,6 +33,10 @@ class RLHFLogRequest(BaseModel):
     state_a11y_tree: str
     vlm_bad_action: str
     human_good_action: str
+
+class OSINTAnalyzeRequest(BaseModel):
+    objective: str
+    raw_data: str
 
 # Database Initialization
 DB_PATH = "rlhf_tuples.db"
@@ -43,7 +58,7 @@ def init_db():
     try:
         cursor.execute("ALTER TABLE tuples ADD COLUMN processed INTEGER DEFAULT 0")
     except sqlite3.OperationalError:
-        pass # Already exists
+        pass
     conn.commit()
     conn.close()
 
@@ -77,7 +92,6 @@ else:
 @app.post("/vlm/act")
 async def act(request: VLMActionRequest):
     if not model_engine:
-        # Fallback to dummy action for development if vllm/mlx not available
         return {"action": "scroll", "direction": "down"}
 
     try:
@@ -118,10 +132,42 @@ async def rlhf_log(request: RLHFLogRequest):
               request.vlm_bad_action, request.human_good_action))
         conn.commit()
         conn.close()
-        print(f"RLHF Log saved at {request.timestamp}")
         return {"status": "success"}
     except Exception as e:
-        print(f"Database Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/osint/analyze")
+async def analyze_osint(request: OSINTAnalyzeRequest):
+    try:
+        system_prompt = f"You are an expert OSINT Analyst. Your objective is: {request.objective}."
+        user_content = f"Here is raw, unstructured data scraped by an autonomous agent:\n{request.raw_data}\n\nDeduplicate this information, extract the core insights, and generate a professional, well-structured Markdown brief."
+
+        response = client.chat.completions.create(
+            model=TEACHER_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content}
+            ]
+        )
+
+        markdown_brief = response.choices[0].message.content.strip()
+        
+        # Save to reports
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_filename = f"osint_brief_{timestamp}.md"
+        report_path = os.path.join("reports", report_filename)
+        
+        os.makedirs("reports", exist_ok=True)
+        with open(report_path, "w") as f:
+            f.write(markdown_brief)
+
+        return {
+            "status": "success",
+            "report_path": report_path,
+            "brief_preview": markdown_brief[:500] + "..."
+        }
+    except Exception as e:
+        print(f"OSINT Analysis Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
