@@ -27,6 +27,10 @@
           <description>Pytest suite for FastAPI backend and SQLite schemas.</description>
           <tangible_implementation>tests/test_vlm_server.py (Python). Verified via pytest.</tangible_implementation>
         </component>
+        <component id="C_00C_SYSTEM_INTEGRATION_TEST" status="implemented">
+          <description>End-to-End loop verification: Chrome -> Server -> Actuator -> DOM.</description>
+          <tangible_implementation>scripts/test_e2e_integration.py. Uses Pyppeteer to verify physical interaction.</tangible_implementation>
+        </component>
       </components>
     </module>
     <module id="MOD_01_FRONTEND_ENGINE" status="implemented">
