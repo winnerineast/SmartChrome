@@ -12,17 +12,27 @@ from pydantic import BaseModel
 import uvicorn
 from openai import OpenAI
 
+# Load Configuration
+def load_config():
+    config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "smartchrome_config.json")
+    if os.path.exists(config_path):
+        with open(config_path, "r") as f:
+            return json.load(f)
+    return {
+        "host": "127.0.0.1", "port": 8000, "db_path": "rlhf_tuples.db",
+        "engine": "mock", "model_path": None, "reports_dir": "reports"
+    }
+
+CONFIG = load_config()
+
 app = FastAPI()
 
-# Configuration from Environment Variables
+# Configuration from Environment Variables or Config File
 TEACHER_API_KEY = os.environ.get("TEACHER_API_KEY", "EMPTY")
 TEACHER_BASE_URL = os.environ.get("TEACHER_BASE_URL", "http://localhost:11434/v1")
 TEACHER_MODEL = os.environ.get("TEACHER_MODEL", "qwen2.5:32b")
 
-client = OpenAI(
-    api_key=TEACHER_API_KEY,
-    base_url=TEACHER_BASE_URL,
-)
+client = OpenAI(api_key=TEACHER_API_KEY, base_url=TEACHER_BASE_URL)
 
 class VLMActionRequest(BaseModel):
     image_base64: str
@@ -43,7 +53,7 @@ class ReloadModelRequest(BaseModel):
     new_model_path: str
 
 # Database Initialization
-DB_PATH = "rlhf_tuples.db"
+DB_PATH = CONFIG["db_path"]
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -67,8 +77,6 @@ def init_db():
     conn.close()
 
 # Hardware-aware Model Loader
-print(f"Detected Platform: {sys.platform}")
-
 model_engine = None
 llm = None
 sampling_params = None
@@ -88,30 +96,33 @@ def load_vlm_model(model_path=None):
         del model
     gc.collect()
 
-    if sys.platform == "darwin":
-        print("Initializing MLX-VLM...")
+    engine = CONFIG["engine"]
+    path = model_path or CONFIG["model_path"]
+
+    if engine == "mlx":
+        print(f"Initializing MLX-VLM with {path}...")
         try:
             from mlx_vlm import load
-            path = model_path or "mlx-community/Qwen2.5-VL-7B-Instruct-4bit"
             model, processor = load(path)
             model_engine = "mlx"
         except ImportError:
             print("mlx-vlm not installed.")
-    else:
-        print("Initializing VLLM...")
+    elif engine == "vllm":
+        print(f"Initializing VLLM with {path}...")
         try:
             from vllm import LLM, SamplingParams
-            path = model_path or "Qwen/Qwen2.5-VL-7B-Instruct"
             llm = LLM(model=path, trust_remote_code=True, max_model_len=4096)
             sampling_params = SamplingParams(temperature=0.0, max_tokens=512)
             model_engine = "vllm"
         except ImportError:
             print("vllm not installed.")
+    else:
+        print("Using Mock Engine.")
+        model_engine = "mock"
 
 @app.post("/vlm/act")
 async def act(request: VLMActionRequest):
-    print(f"DEBUG act: engine={model_engine}, llm_is_none={llm is None}")
-    if not model_engine:
+    if model_engine == "mock":
         return {"action": "scroll", "direction": "down"}
 
     try:
@@ -135,12 +146,8 @@ async def act(request: VLMActionRequest):
         clean_response = response.strip()
         if "```json" in clean_response:
             clean_response = clean_response.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_response:
-            clean_response = clean_response.split("```")[1].split("```")[0].strip()
-            
         return json.loads(clean_response)
     except Exception as e:
-        print(f"Error during act: {e}")
         return {"action": "scroll", "direction": "down"}
 
 @app.post("/vlm/rlhf_log")
@@ -157,7 +164,6 @@ async def rlhf_log(request: RLHFLogRequest):
         conn.close()
         return {"status": "success"}
     except Exception as e:
-        print(f"Error during rlhf_log: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/osint/analyze")
@@ -176,7 +182,7 @@ async def analyze_osint(request: OSINTAnalyzeRequest):
         markdown_brief = response.choices[0].message.content.strip()
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_dir = "reports"
+        report_dir = CONFIG["reports_dir"]
         os.makedirs(report_dir, exist_ok=True)
         report_path = os.path.join(report_dir, f"osint_brief_{timestamp}.md")
         with open(report_path, "w") as f:
@@ -184,20 +190,17 @@ async def analyze_osint(request: OSINTAnalyzeRequest):
 
         return {"status": "success", "report_path": report_path}
     except Exception as e:
-        print(f"Error during osint/analyze: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/vlm/reload")
 async def reload_model(request: ReloadModelRequest):
     try:
-        print(f"Hot Reloading Model from: {request.new_model_path}")
         load_vlm_model(request.new_model_path)
         return {"status": "success", "model_engine": model_engine}
     except Exception as e:
-        print(f"Reload Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     init_db()
     load_vlm_model()
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host=CONFIG["host"], port=CONFIG["port"])

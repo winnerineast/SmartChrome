@@ -134,5 +134,18 @@
         </component>
       </components>
     </module>
+    <module id="MOD_05_CONFIGURATION" status="implemented">
+      <description>Environment-agnostic setup and dynamic parameter management.</description>
+      <components>
+        <component id="C_11_SETUP_ENV" status="implemented">
+          <description>Auto-detector for hardware (NVIDIA vs MLX) and ports.</description>
+          <tangible_implementation>scripts/setup_env.py. Generates smartchrome_config.json.</tangible_implementation>
+        </component>
+        <component id="C_12_DYNAMIC_FRONTEND" status="implemented">
+          <description>Chromium side C++ config parser.</description>
+          <tangible_implementation>VLMPageHostImpl (C++) reads JSON config at runtime to avoid recompilation for env changes.</tangible_implementation>
+        </component>
+      </components>
+    </module>
   </modules>
 </system_architecture_doc>

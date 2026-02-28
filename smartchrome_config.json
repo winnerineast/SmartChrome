@@ -1,0 +1,10 @@
+{
+    "host": "127.0.0.1",
+    "port": 8000,
+    "db_path": "rlhf_tuples.db",
+    "reports_dir": "reports",
+    "models_dir": "models",
+    "training_dataset": "training_dataset.jsonl",
+    "engine": "vllm",
+    "model_path": "Qwen/Qwen2.5-VL-7B-Instruct"
+}
