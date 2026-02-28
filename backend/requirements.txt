@@ -10,3 +10,5 @@ transformers
 torch
 bitsandbytes
 mlx_lm
+pytest
+httpx

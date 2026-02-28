@@ -23,6 +23,10 @@
           <description>GTest suite for VLM components (Actuator, Observer, PageHost).</description>
           <tangible_implementation>vlm_agent_unittests (C++). Runs in Chromium build tree.</tangible_implementation>
         </component>
+        <component id="C_00B_PYTHON_UNIT_TESTS" status="implemented">
+          <description>Pytest suite for FastAPI backend and SQLite schemas.</description>
+          <tangible_implementation>tests/test_vlm_server.py (Python). Verified via pytest.</tangible_implementation>
+        </component>
       </components>
     </module>
     <module id="MOD_01_FRONTEND_ENGINE" status="implemented">

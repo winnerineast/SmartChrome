@@ -66,8 +66,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-init_db()
-
 # Hardware-aware Model Loader
 print(f"Detected Platform: {sys.platform}")
 
@@ -84,7 +82,8 @@ def load_vlm_model(model_path=None):
     if llm:
         del llm
         import torch
-        torch.cuda.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
     if model:
         del model
     gc.collect()
@@ -109,11 +108,9 @@ def load_vlm_model(model_path=None):
         except ImportError:
             print("vllm not installed.")
 
-# Initial Load
-load_vlm_model()
-
 @app.post("/vlm/act")
 async def act(request: VLMActionRequest):
+    print(f"DEBUG act: engine={model_engine}, llm_is_none={llm is None}")
     if not model_engine:
         return {"action": "scroll", "direction": "down"}
 
@@ -138,9 +135,12 @@ async def act(request: VLMActionRequest):
         clean_response = response.strip()
         if "```json" in clean_response:
             clean_response = clean_response.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean_response:
+            clean_response = clean_response.split("```")[1].split("```")[0].strip()
+            
         return json.loads(clean_response)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error during act: {e}")
         return {"action": "scroll", "direction": "down"}
 
 @app.post("/vlm/rlhf_log")
@@ -157,6 +157,7 @@ async def rlhf_log(request: RLHFLogRequest):
         conn.close()
         return {"status": "success"}
     except Exception as e:
+        print(f"Error during rlhf_log: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/osint/analyze")
@@ -175,13 +176,15 @@ async def analyze_osint(request: OSINTAnalyzeRequest):
         markdown_brief = response.choices[0].message.content.strip()
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_path = os.path.join("reports", f"osint_brief_{timestamp}.md")
-        os.makedirs("reports", exist_ok=True)
+        report_dir = "reports"
+        os.makedirs(report_dir, exist_ok=True)
+        report_path = os.path.join(report_dir, f"osint_brief_{timestamp}.md")
         with open(report_path, "w") as f:
             f.write(markdown_brief)
 
         return {"status": "success", "report_path": report_path}
     except Exception as e:
+        print(f"Error during osint/analyze: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/vlm/reload")
@@ -195,4 +198,6 @@ async def reload_model(request: ReloadModelRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
+    init_db()
+    load_vlm_model()
     uvicorn.run(app, host="127.0.0.1", port=8000)
