@@ -1,0 +1,57 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", embedding a local Vision-Language Model (VLM) into Chromium.
+    This task focuses on Phase 2: The Backend Teacher/Analyst (MOD_01 & MOD_03). 
+    We need to replace the `mock_server.py` with a real, intelligent edge backend hosting a Vision-Language Model.
+    
+    CRITICAL CONSTRAINT: This backend must run on TWO distinct environments:
+    1. A Dell Alienware R16 (WSL2 Ubuntu 22.04 with an RTX 4090 GPU / CUDA).
+    2. An Apple MacBook Pro M2 Max (macOS with Apple Silicon / 32GB Unified Memory).
+    
+    You must build a hardware-aware FastAPI server (`vlm_server.py`) that conditionally loads the correct inference engine based on the detected OS/Hardware.
+  </context>
+
+  <phase_1_project_management>
+    <description>Save this prompt to the SmartChrome GitHub repo so we have a record of what we are doing.</description>
+    <actions>
+      <action>Ensure directory `~/SmartChrome/tasks/` exists.</action>
+      <action>Save this entire XML prompt text into a new file located at: `~/SmartChrome/tasks/task_012_vlm_backend_dual.xml`</action>
+      <action>Change directory to `~/SmartChrome`.</action>
+      <action>Execute: `git add tasks/task_012_vlm_backend_dual.xml`</action>
+      <action>Execute: `git commit -m "task: add dual environment vlm backend prompt"`</action>
+      <action>Execute: `git push`</action>
+    </actions>
+  </phase_1_project_management>
+
+  <phase_2_python_execution>
+    <description>Implement the Hardware-Aware Python VLM Backend.</description>
+    <actions>
+      <action>Change directory to `~/SmartChrome/backend`.</action>
+      <action>Update `requirements.txt` to include: `fastapi`, `uvicorn`, `vllm`, `mlx-vlm`, `pillow`, `huggingface_hub`.</action>
+      <action>Create `vlm_server.py`.</action>
+      <action>The server must use `sys.platform` to detect `darwin` (Mac) vs `linux`/`win32` (PC).</action>
+      <action>If Mac (Apple Silicon):
+          - Initialize `mlx_vlm`.
+          - Load the quantized model targeting unified memory: `mlx-community/Qwen2.5-VL-7B-Instruct-4bit`.
+      </action>
+      <action>If Linux/WSL2 (CUDA):
+          - Initialize `vllm.LLM` and `vllm.SamplingParams`.
+          - Load the unquantized model targeting the 24GB VRAM: `Qwen/Qwen2.5-VL-7B-Instruct`.
+      </action>
+      <action>Expose the `POST /vlm/act` endpoint exactly accepting: 
+          `{ "image_base64": "...", "a11y_tree": "..." }`
+      </action>
+      <action>Construct the System Prompt dynamically:
+          Decode the base64 image into a `PIL.Image`. 
+          Instruct the model: "You are SmartChrome. Based on this screenshot and accessibility struct, output ONLY valid JSON containing the `action` and `target_bbox` to accomplish the user objective. Valid actions are `click`, `scroll`, or `type`."
+      </action>
+      <action>Execute the inference request using the properly initialized hardware engine.</action>
+      <action>Parse the text response to ensure it is valid JSON (matching `{"action": "...", "target_bbox": ...}`) and return it to the Chromium caller.</action>
+    </actions>
+  </phase_2_python_execution>
+
+  <execution_directive>
+    Execute Phase 1 first to secure the task record. Then execute Phase 2. 
+    Report back when the Python server is successfully written. Include instructions on how the human should install the CUDA/MLX specific pip dependencies before running the server.
+  </execution_directive>
+</gemini_cli_task>
