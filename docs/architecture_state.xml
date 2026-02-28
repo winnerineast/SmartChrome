@@ -49,9 +49,9 @@
           </tangible_implementation>
         </component>
 
-        <component id="C_02_ACTUATOR">
+        <component id="C_02_ACTUATOR" status="implemented">
           <description>High-Level: Executes VLM logical actions on the browser.</description>
-          <tangible_implementation>Pending. Will map logical actions (`click`, `scroll`, `type`) and `target_bbox` dimensions from the VLM JSON response into native Chromium UI/Input Events.</tangible_implementation>
+          <tangible_implementation>Implemented. Maps logical actions (`click`, `scroll`, `type`) and `target_bbox` dimensions from the VLM JSON response into native Chromium UI/Input Events via `VLMActuator`.</tangible_implementation>
           <input format="json">{"action": "click|scroll|type", "target_bbox": [x,y,w,h], "text": "..."}</input>
           <output>System-level execution within sandbox.</output>
         </component>
