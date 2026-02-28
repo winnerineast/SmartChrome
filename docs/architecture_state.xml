@@ -65,16 +65,16 @@
       </components>
     </module>
 
-    <module id="MOD_02_DATA_COLLECTION" status="pending_implementation">
+    <module id="MOD_02_DATA_COLLECTION" status="implemented">
       <description>RLHF data pipeline via human intervention.</description>
       <components>
-        <component id="C_04_INTERCEPTOR">
-          <trigger>Hardware shortcut / Hotkey execution</trigger>
-          <process>Freeze MOD_01 AUTONOMOUS state. Capture immediate context.</process>
+        <component id="C_04_INTERCEPTOR" status="implemented">
+          <trigger>Hardware shortcut / Hotkey execution / Toolbar button</trigger>
+          <process>Freeze MOD_01 AUTONOMOUS state. Capture immediate context. Toggle via VLMObserver.</process>
         </component>
-        <component id="C_05_DELTA_LOGGER">
+        <component id="C_05_DELTA_LOGGER" status="implemented">
           <input>Context from C_04, VLM intended action, Human corrected action</input>
-          <process>Create RLHF tuple.</process>
+          <process>Create RLHF tuple. Log to SQLite via Python backend /vlm/rlhf_log.</process>
           <output destination="STORAGE">Tuple(State_Image, State_A11y, Bad_Action_VLM, Good_Action_Human)</output>
         </component>
       </components>
