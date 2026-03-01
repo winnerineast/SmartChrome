@@ -73,3 +73,27 @@ While the AI agent is building the C++ components in the Chromium tree, you can 
    ~/chromium/src/out/Default/chrome --force-renderer-accessibility
    ```
 3. Watch the `mock_server.py` terminal output. It will save `debug_latest_screenshot.jpg` and `debug_latest_a11y.json` inside the `backend/` folder whenever the browser telemetry pipeline fires.
+
+## 🕹️ Testing the SmartChrome Commander (GUI)
+
+Once **Task 022** is implemented, you can test the user interface:
+
+1. **Start the Mock VLM Server:**
+   ```bash
+   cd backend
+   python3 mock_server.py
+   ```
+2. **Launch SmartChrome with the Side Panel enabled:**
+   ```bash
+   ~/chromium/src/out/Default/chrome --force-renderer-accessibility
+   ```
+3. **Open the Commander:**
+   - Click the **SmartChrome Icon** in the browser toolbar OR
+   - Open the **Side Panel** dropdown and select **SmartChrome**.
+4. **Set a Mission:**
+   - Type an objective (e.g., "Find the price of Bitcoin") into the Commander text area and press **Set Mission**.
+   - Verify the `mock_server.py` log shows the objective being received via the `/vlm/objective` endpoint.
+5. **Monitor Reasoning:**
+   - Observe the "Chain of Thought" feed in the Commander as the VLM responds to layout changes.
+6. **Test Intervention:**
+   - Click the **Intervention** button to toggle between **Autonomous** and **Shadow** modes. Verify the backend receives the updated state.
