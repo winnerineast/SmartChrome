@@ -32,7 +32,8 @@ The task queue in `tasks/` currently commands the AI Agent to build the followin
 - **Task `009`**: Setting up the Mock VLM Server and providing a hotfix for dirty Blink accessibility cache crashes.
 - **Task `010+`**: Implementing Native Axtree Pivot extraction, adding VLM trace logging, and fixing Mojo pipe lifecycles (stale pipes and rebinds).
 - **Task `022`**: Implemented the **SmartChrome Commander**—a native Chromium Side Panel (WebUI) for setting mission objectives, monitoring the agent's Chain of Thought, and toggling between Shadow and Autonomous modes.
-- **Task `023`**: (Next) Native Resource Integration (GRIT) to bundle UI assets directly into the Chromium binary.
+- **Task `023`**: Implemented Native Resource Integration (GRIT) to bundle UI assets directly into the Chromium binary.
+- **Task `024`**: (Current) Agent Autonomy & Navigation. Adding support for direct URL navigation and "Bootstrap" search engine queries for empty states.
 
 ## ⚙️ Prerequisites
 

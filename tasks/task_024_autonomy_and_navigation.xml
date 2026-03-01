@@ -1,0 +1,29 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", an Auto-Evolving OSINT VLM Agent.
+    This task focuses on Phase 12: Autonomy (Navigation &amp; Bootstrapping).
+    Currently, the agent is reactive—it only interacts with elements on the current page. We need to give it the "will" to start a search from a blank state and the ability to navigate directly to URLs.
+  </context>
+
+  <phase_1_chromium_actuator_navigation>
+    <description>Add 'navigate' support to VLMActuator.</description>
+    <actions>
+      <action>Modify `components/vlm_agent/browser/vlm_actuator.h` to add the `Navigate` method.</action>
+      <action>Modify `components/vlm_agent/browser/vlm_actuator.cc` to implement `Navigate` using `content::NavigationController`.</action>
+      <action>Update `ExecuteAction` to handle the `"navigate"` action type and extract the `"url"` field from the JSON payload.</action>
+    </actions>
+  </phase_1_chromium_actuator_navigation>
+
+  <phase_2_python_backend_bootstrapping>
+    <description>Implement 'Bootstrap' logic for empty states.</description>
+    <actions>
+      <action>Modify `backend/vlm_server.py`.</action>
+      <action>Update the `/vlm/act` endpoint: If the `a11y_tree` is essentially empty (e.g., "{}" or very short), and a `current_objective` is set, return a `navigate` action to a search engine (e.g., `https://www.google.com/search?q=[objective]`).</action>
+      <action>Add logic to detect if the agent is "stuck" on a non-useful page and trigger a re-navigation.</action>
+    </actions>
+  </phase_2_python_backend_bootstrapping>
+
+  <execution_directive>
+    This task allows the agent to take the first step toward a mission without human guidance. It bridges the gap between having a goal and finding the data.
+  </execution_directive>
+</gemini_cli_task>
