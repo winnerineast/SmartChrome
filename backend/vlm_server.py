@@ -123,7 +123,8 @@ def load_vlm_model(model_path=None):
             model, processor = load(path)
             model_engine = "mlx"
         except ImportError:
-            print("mlx-vlm not installed.")
+            print("mlx-vlm not installed. Falling back to mock.")
+            model_engine = "mock"
     elif engine == "vllm":
         print(f"Initializing VLLM with {path}...")
         try:
@@ -132,7 +133,8 @@ def load_vlm_model(model_path=None):
             sampling_params = SamplingParams(temperature=0.0, max_tokens=512)
             model_engine = "vllm"
         except ImportError:
-            print("vllm not installed.")
+            print("vllm not installed. Falling back to mock.")
+            model_engine = "mock"
     else:
         print("Using Mock Engine.")
         model_engine = "mock"
@@ -170,9 +172,15 @@ async def act(request: VLMActionRequest):
         if model_engine == "mlx":
             response_text = '{"action": "scroll", "direction": "down", "thought": "Scanning page for relevant content."}' 
         elif model_engine == "vllm":
+            if not llm:
+                reasoning_log.append(f"[{datetime.now().strftime('%H:%M:%S')}] Internal Error: VLLM engine requested but not loaded.")
+                return {"action": "scroll", "direction": "down"}
             prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n<|vision_start|><|image_pad|><|vision_end|>{user_content}<|im_end|>\n<|im_start|>assistant\n"
             outputs = llm.generate([{"prompt": prompt, "multi_modal_data": {"image": image}}], sampling_params)
             response_text = outputs[0].outputs[0].text
+
+        if not response_text:
+            raise ValueError("VLM returned an empty response.")
 
         clean_response = response_text.strip()
         if "```json" in clean_response:
