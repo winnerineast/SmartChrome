@@ -163,9 +163,9 @@
           <description>Visual 'Chain of Thought' display within the Sidebar.</description>
           <tangible_implementation>Reactive JS polling from backend logs to WebUI, displaying VLM "thoughts" in real-time.</tangible_implementation>
         </component>
-        <component id="C_16_AUTONOMOUS_NAVIGATOR" status="planned">
+        <component id="C_16_AUTONOMOUS_NAVIGATOR" status="implemented">
           <description>Ability to jump to search engines and navigate directly via URL.</description>
-          <tangible_implementation>VLMActuator 'navigate' action and backend bootstrapping logic.</tangible_implementation>
+          <tangible_implementation>VLMActuator 'navigate' action and backend bootstrapping logic in vlm_server.py.</tangible_implementation>
         </component>
       </components>
     </module>
