@@ -1,0 +1,41 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", an Auto-Evolving OSINT VLM Agent.
+    This task focuses on Phase 10: User Experience (SmartChrome Commander).
+    Currently, the agent is autonomous but "blind" to direct user instruction. We need a native Chromium Side Panel (the "Commander") to set missions, monitor reasoning, and toggle modes.
+  </context>
+
+  <phase_1_python_backend>
+    <description>Add Objective and Reasoning stream support.</description>
+    <actions>
+      <action>Modify `backend/vlm_server.py` to add a global `current_objective` variable.</action>
+      <action>Implement `@app.post("/vlm/objective")` to receive and store the user's mission string.</action>
+      <action>Update `@app.post("/vlm/act")` to prepend the `current_objective` to the VLM system prompt.</action>
+      <action>Implement a basic logging mechanism to store the last 5 "thoughts" (Chain of Thought) from the VLM and serve them via `@app.get("/vlm/status")`.</action>
+    </actions>
+  </phase_1_python_backend>
+
+  <phase_2_chromium_frontend_webui>
+    <description>Create the Commander WebUI resources.</description>
+    <actions>
+      <action>Create directory `chrome/browser/resources/smart_commander/`.</action>
+      <action>Implement `commander.html`: A clean UI with a Mission text area, HUD for status, and a scrolling Reason log.</action>
+      <action>Implement `commander.css`: Modern, dark-themed styling with an "Intervention" red button.</action>
+      <action>Implement `commander.js`: Uses `fetch()` to sync with the local Python server and Mojo to toggle `VLMObserver` intervention state.</action>
+    </actions>
+  </phase_2_chromium_frontend_webui>
+
+  <phase_3_chromium_cpp_wiring>
+    <description>Register the Side Panel and WebUI Controller.</description>
+    <actions>
+      <action>Implement `SmartCommanderUI` and `SmartCommanderUIConfig` in `chrome/browser/ui/webui/smart_commander/`.</action>
+      <action>Register the WebUI in `chrome/browser/ui/webui/chrome_web_ui_controller_factory.cc` under `chrome://smart-commander`.</action>
+      <action>Modify `chrome/browser/ui/views/side_panel/side_panel_entry_registrar.cc` to add a new `SidePanelEntry` for SmartChrome.</action>
+      <action>Recompile Chromium: `autoninja -C out/Default chrome`.</action>
+    </actions>
+  </phase_3_chromium_cpp_wiring>
+
+  <execution_directive>
+    This task transforms SmartChrome from a background experiment into a controllable tool. The Python layer provides the state, and the C++ layer provides the native "Mission Control" surface.
+  </execution_directive>
+</gemini_cli_task>
