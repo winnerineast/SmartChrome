@@ -1,0 +1,37 @@
+<gemini_cli_task>
+  <context>
+    We are building "SmartChrome", an Auto-Evolving OSINT VLM Agent.
+    This task focuses on Phase 11: Productionization (Native Resource Integration).
+    The SmartChrome Commander currently relies on direct file-path access or bypassed resource IDs. To make this production-ready, we must integrate the HTML/JS/CSS into Chromium's GRIT resource system.
+  </context>
+
+  <phase_1_grit_configuration>
+    <description>Add resources to the Chromium build system.</description>
+    <actions>
+      <action>Locate `chrome/browser/browser_resources.grd`.</action>
+      <action>Add `<include name="IDR_SMART_COMMANDER_HTML" file="resources/smart_commander/commander.html" type="BINDATA" />` entries.</action>
+      <action>Add corresponding entries for `.js` and `.css` files.</action>
+    </actions>
+  </phase_1_grit_configuration>
+
+  <phase_2_cpp_resource_mapping>
+    <description>Update the WebUI source to use generated IDs.</description>
+    <actions>
+      <action>Modify `chrome/browser/ui/webui/smart_commander/smart_commander_ui.cc`.</action>
+      <action>Replace dummy `0` IDs with `IDR_SMART_COMMANDER_HTML`, etc.</action>
+      <action>Remove any fallback logic that reads from absolute disk paths.</action>
+    </actions>
+  </phase_2_cpp_resource_mapping>
+
+  <phase_3_metrics_registration>
+    <description>Whitelisting the WebUI name for metrics.</description>
+    <actions>
+      <action>Add `SmartCommander` to the appropriate histogram allowlist (e.g., `tools/metrics/histograms/metadata/browser/histograms.xml`) so `IsValidWebUIName` passes without spoofing.</action>
+      <action>Update `smart_commander_ui.h` to return the real `"SmartCommander"` name.</action>
+    </actions>
+  </phase_3_metrics_registration>
+
+  <execution_directive>
+    This task ensures SmartChrome is part of the "official" Chromium resource bundle, allowing it to work in distributed binaries without requiring the source code to be present on the user's machine.
+  </execution_directive>
+</gemini_cli_task>

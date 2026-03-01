@@ -148,20 +148,20 @@
       </components>
     </module>
 
-    <module id="MOD_06_SMART_COMMANDER" status="planned">
+    <module id="MOD_06_SMART_COMMANDER" status="implemented">
       <description>Mission Control and User Interface for agent orchestration.</description>
       <components>
-        <component id="C_13_MISSION_CONTROL_SIDEBAR">
+        <component id="C_13_MISSION_CONTROL_SIDEBAR" status="implemented">
           <description>Native Chromium Side Panel (WebUI) for real-time interaction.</description>
-          <tangible_implementation>chrome/browser/ui/webui/smart_commander/ and registration in SidePanelRegistry. Uses Mojo to talk to VLMObserver.</tangible_implementation>
+          <tangible_implementation>chrome/browser/ui/webui/smart_commander/ and registration in SidePanelRegistry. Successfully integrated via SidePanelWebUIViewT template.</tangible_implementation>
         </component>
-        <component id="C_14_OBJECTIVE_DISPATCHER">
+        <component id="C_14_OBJECTIVE_DISPATCHER" status="implemented">
           <description>Bridges User Intent from Sidebar to VLM Backend.</description>
-          <tangible_implementation>New /vlm/objective endpoint in vlm_server.py. Injects context into VLM system prompts.</tangible_implementation>
+          <tangible_implementation>Implemented /vlm/objective and /vlm/status endpoints in vlm_server.py with CORS support.</tangible_implementation>
         </component>
-        <component id="C_15_REASONING_HUD">
+        <component id="C_15_REASONING_HUD" status="implemented">
           <description>Visual 'Chain of Thought' display within the Sidebar.</description>
-          <tangible_implementation>Reactive JS stream from backend logs to WebUI.</tangible_implementation>
+          <tangible_implementation>Reactive JS polling from backend logs to WebUI, displaying VLM "thoughts" in real-time.</tangible_implementation>
         </component>
       </components>
     </module>
