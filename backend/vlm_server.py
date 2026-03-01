@@ -34,6 +34,10 @@ TEACHER_MODEL = os.environ.get("TEACHER_MODEL", "qwen2.5:32b")
 
 client = OpenAI(api_key=TEACHER_API_KEY, base_url=TEACHER_BASE_URL)
 
+# Global State for Commander UI
+current_objective = "Explore the web and find interesting facts."
+reasoning_log = []
+
 class VLMActionRequest(BaseModel):
     image_base64: str
     a11y_tree: str
@@ -51,6 +55,9 @@ class OSINTAnalyzeRequest(BaseModel):
 
 class ReloadModelRequest(BaseModel):
     new_model_path: str
+
+class ObjectiveRequest(BaseModel):
+    objective: str
 
 # Database Initialization
 DB_PATH = CONFIG["db_path"]
@@ -122,33 +129,65 @@ def load_vlm_model(model_path=None):
 
 @app.post("/vlm/act")
 async def act(request: VLMActionRequest):
+    global reasoning_log
+    
     if model_engine == "mock":
-        return {"action": "scroll", "direction": "down"}
+        action = {"action": "scroll", "direction": "down"}
+        reasoning_log.append(f"[{datetime.now().strftime('%H:%M:%S')}] Mocking action based on objective: {current_objective}")
+        if len(reasoning_log) > 5: reasoning_log.pop(0)
+        return action
 
     try:
         image_data = base64.b64decode(request.image_base64)
         image = Image.open(io.BytesIO(image_data))
         
         system_prompt = (
-            "You are SmartChrome, an autonomous AI browser assistant. "
+            f"You are SmartChrome, an autonomous AI browser assistant. Your current mission objective is: {current_objective}. "
             "Output ONLY valid JSON matching: "
-            '{"action": "click|scroll|type", "target_bbox": [x, y, w, h], "text": "..."}.'
+            '{"action": "click|scroll|type", "target_bbox": [x, y, w, h], "text": "...", "thought": "Brief explanation of why you are taking this action"}.'
         )
         user_content = f"Accessibility Tree: {request.a11y_tree}\n\nWhat is the next action?"
 
+        response_text = ""
         if model_engine == "mlx":
-            response = '{"action": "scroll", "direction": "down"}' 
+            response_text = '{"action": "scroll", "direction": "down", "thought": "Scanning page for relevant content."}' 
         elif model_engine == "vllm":
             prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n<|vision_start|><|image_pad|><|vision_end|>{user_content}<|im_end|>\n<|im_start|>assistant\n"
             outputs = llm.generate([{"prompt": prompt, "multi_modal_data": {"image": image}}], sampling_params)
-            response = outputs[0].outputs[0].text
+            response_text = outputs[0].outputs[0].text
 
-        clean_response = response.strip()
+        clean_response = response_text.strip()
         if "```json" in clean_response:
             clean_response = clean_response.split("```json")[1].split("```")[0].strip()
-        return json.loads(clean_response)
+        
+        parsed_response = json.loads(clean_response)
+        
+        # Log reasoning
+        thought = parsed_response.get("thought", "Executing tactical navigation.")
+        reasoning_log.append(f"[{datetime.now().strftime('%H:%M:%S')}] {thought}")
+        if len(reasoning_log) > 5: reasoning_log.pop(0)
+
+        return parsed_response
     except Exception as e:
+        reasoning_log.append(f"[{datetime.now().strftime('%H:%M:%S')}] Error: {str(e)}")
+        if len(reasoning_log) > 5: reasoning_log.pop(0)
         return {"action": "scroll", "direction": "down"}
+
+@app.post("/vlm/objective")
+async def set_objective(request: ObjectiveRequest):
+    global current_objective, reasoning_log
+    current_objective = request.objective
+    reasoning_log.append(f"[{datetime.now().strftime('%H:%M:%S')}] Mission Updated: {current_objective}")
+    if len(reasoning_log) > 5: reasoning_log.pop(0)
+    return {"status": "success", "objective": current_objective}
+
+@app.get("/vlm/status")
+async def get_status():
+    return {
+        "objective": current_objective,
+        "reasoning_log": reasoning_log,
+        "engine": model_engine
+    }
 
 @app.post("/vlm/rlhf_log")
 async def rlhf_log(request: RLHFLogRequest):
