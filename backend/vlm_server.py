@@ -116,24 +116,28 @@ def load_vlm_model(model_path=None):
     engine = CONFIG["engine"]
     path = model_path or CONFIG["model_path"]
 
-    if engine == "mlx":
-        print(f"Initializing MLX-VLM with {path}...")
-        try:
-            from mlx_vlm import load
-            model, processor = load(path)
-            model_engine = "mlx"
-        except ImportError:
-            print("mlx-vlm not installed. Falling back to mock.")
-            model_engine = "mock"
-    elif engine == "vllm":
-        print(f"Initializing VLLM with {path}...")
-        try:
-            from vllm import LLM, SamplingParams
-            llm = LLM(model=path, trust_remote_code=True, max_model_len=4096)
-            sampling_params = SamplingParams(temperature=0.0, max_tokens=512)
-            model_engine = "vllm"
-        except ImportError:
-            print("vllm not installed. Falling back to mock.")
+    try:
+        if engine == "mlx":
+            print(f"Initializing MLX-VLM with {path}...")
+            try:
+                from mlx_vlm import load
+                model, processor = load(path)
+                model_engine = "mlx"
+            except ImportError:
+                print("mlx-vlm not installed. Falling back to mock.")
+                model_engine = "mock"
+        elif engine == "vllm":
+            print(f"Initializing VLLM with {path}...")
+            try:
+                from vllm import LLM, SamplingParams
+                llm = LLM(model=path, trust_remote_code=True, max_model_len=4096)
+                sampling_params = SamplingParams(temperature=0.0, max_tokens=512)
+                model_engine = "vllm"
+            except ImportError:
+                print("vllm not installed. Falling back to mock.")
+                model_engine = "mock"
+        else:
+            print("Using Mock Engine.")
             model_engine = "mock"
     except Exception as e:
         print(f"Error loading {engine} engine: {e}. Falling back to mock.")
