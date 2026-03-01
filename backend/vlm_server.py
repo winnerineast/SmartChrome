@@ -8,6 +8,7 @@ import gc
 from datetime import datetime
 from PIL import Image
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 from openai import OpenAI
@@ -26,6 +27,15 @@ def load_config():
 CONFIG = load_config()
 
 app = FastAPI()
+
+# Enable CORS for the Commander UI
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Configuration from Environment Variables or Config File
 TEACHER_API_KEY = os.environ.get("TEACHER_API_KEY", "EMPTY")
@@ -126,11 +136,19 @@ def load_vlm_model(model_path=None):
     else:
         print("Using Mock Engine.")
         model_engine = "mock"
-
 @app.post("/vlm/act")
 async def act(request: VLMActionRequest):
     global reasoning_log
-    
+
+    # Bootstrap Logic: If page is empty/NTP, initiate search
+    is_empty_state = len(request.a11y_tree) < 50 or "newtab" in request.a11y_tree.lower()
+
+    if is_empty_state and current_objective:
+        search_url = f"https://www.google.com/search?q={current_objective.replace(' ', '+')}"
+        reasoning_log.append(f"[{datetime.now().strftime('%H:%M:%S')}] Bootstrap: Page is empty. Initiating search for: {current_objective}")
+        if len(reasoning_log) > 5: reasoning_log.pop(0)
+        return {"action": "navigate", "url": search_url, "thought": "Starting mission by searching for objective."}
+
     if model_engine == "mock":
         action = {"action": "scroll", "direction": "down"}
         reasoning_log.append(f"[{datetime.now().strftime('%H:%M:%S')}] Mocking action based on objective: {current_objective}")
