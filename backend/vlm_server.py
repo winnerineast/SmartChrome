@@ -135,9 +135,10 @@ def load_vlm_model(model_path=None):
         except ImportError:
             print("vllm not installed. Falling back to mock.")
             model_engine = "mock"
-    else:
-        print("Using Mock Engine.")
+    except Exception as e:
+        print(f"Error loading {engine} engine: {e}. Falling back to mock.")
         model_engine = "mock"
+
 @app.post("/vlm/act")
 async def act(request: VLMActionRequest):
     global reasoning_log
@@ -151,10 +152,14 @@ async def act(request: VLMActionRequest):
         if len(reasoning_log) > 5: reasoning_log.pop(0)
         return {"action": "navigate", "url": search_url, "thought": "Starting mission by searching for objective."}
 
+    # DEBUG LOGGING
+    reasoning_log.append(f"[{datetime.now().strftime('%H:%M:%S')}] DEBUG: Engine={model_engine}, Objective={current_objective}")
+    if len(reasoning_log) > 10: reasoning_log.pop(0)
+
     if model_engine == "mock":
         action = {"action": "scroll", "direction": "down"}
-        reasoning_log.append(f"[{datetime.now().strftime('%H:%M:%S')}] Mocking action based on objective: {current_objective}")
-        if len(reasoning_log) > 5: reasoning_log.pop(0)
+        reasoning_log.append(f"[{datetime.now().strftime('%H:%M:%S')}] DEBUG: Using MOCK response.")
+        if len(reasoning_log) > 10: reasoning_log.pop(0)
         return action
 
     try:
